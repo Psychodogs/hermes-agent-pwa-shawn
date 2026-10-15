@@ -18,7 +18,10 @@ beforeAll(async () => {
   idempotentJson = (await import("./idempotency")).idempotentJson;
 });
 
-afterAll(() => fs.rmSync(directory, { recursive: true, force: true }));
+afterAll(async () => {
+  (await import("@/lib/db")).db.close();
+  fs.rmSync(directory, { recursive: true, force: true });
+});
 
 describe("idempotentJson", () => {
   it("executes once and replays the stored JSON response", async () => {
