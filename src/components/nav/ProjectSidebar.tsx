@@ -4,8 +4,11 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   IconChevronRight,
+  IconEdit,
   IconPlus,
+  IconTrash,
 } from "@/components/primitives/icons";
+import { Menu, MenuItem } from "@/components/ui/Menu";
 import type { Project, ProjectSession } from "@/lib/chat-types";
 import { sessionsRecentFirst } from "@/lib/session-order";
 
@@ -14,7 +17,8 @@ function SessionBranch({
   childrenByParent,
   activeSessionId,
   onSelect,
-  onManage,
+  onRename,
+  onDelete,
   unreadScheduledCount,
   depth = 0,
 }: {
@@ -22,12 +26,46 @@ function SessionBranch({
   childrenByParent: Map<string | null, ProjectSession[]>;
   activeSessionId?: string;
   onSelect: (session: ProjectSession) => void;
-  onManage: (session: ProjectSession) => void;
+  /** resolves to an error message, or null on success */
+  onRename: (session: ProjectSession, title: string) => Promise<string | null>;
+  onDelete: (session: ProjectSession) => Promise<string | null>;
   unreadScheduledCount: number;
   depth?: number;
 }) {
   const children = childrenByParent.get(session.session_id) ?? [];
   const active = session.session_id === activeSessionId;
+  // The row itself turns into the rename field or the delete confirmation,
+  // rather than a browser prompt() — which an installed app draws as a bare
+  // system dialog, and which some browsers suppress altogether.
+  const [mode, setMode] = useState<"idle" | "rename" | "delete">("idle");
+  const [draft, setDraft] = useState(session.title);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  function reset() {
+    setMode("idle");
+    setBusy(false);
+    setError(null);
+  }
+
+  async function submitRename() {
+    const title = draft.trim();
+    if (!title || title === session.title) return reset();
+    setBusy(true);
+    setError(await onRename(session, title));
+    setBusy(false);
+    setMode((current) => (current === "rename" ? "idle" : current));
+  }
+
+  async function submitDelete() {
+    setBusy(true);
+    const failure = await onDelete(session);
+    if (failure) {
+      setError(failure);
+      setBusy(false);
+    }
+  }
+
   return (
     <li>
       <div
@@ -36,33 +74,114 @@ function SessionBranch({
         }`}
         style={{ paddingLeft: `${20 + depth * 16}px` }}
       >
-        <button
-          type="button"
-          onClick={() => onSelect(session)}
-          aria-current={active ? "page" : undefined}
-          className="flex min-w-0 flex-1 items-center gap-2 py-2 text-left"
-        >
-          <span aria-hidden className="text-ink-3">
-            {session.kind === "scheduled" ? "◷" : depth > 0 ? "└" : "•"}
-          </span>
-          <span className="min-w-0 flex-1 truncate">{session.title}</span>
-          {session.kind === "scheduled" && unreadScheduledCount > 0 && (
-            <span className="rounded-chip bg-accent-tint px-1.5 text-meta text-ink">
-              {unreadScheduledCount}
-            </span>
-          )}
-        </button>
-        {active && session.kind !== "scheduled" && (
+        {mode === "rename" ? (
+          <form
+            className="flex min-w-0 flex-1 items-center gap-2 py-1 pr-1"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void submitRename();
+            }}
+          >
+            <span aria-hidden className="text-ink-3">{depth > 0 ? "└" : "•"}</span>
+            <input
+              autoFocus
+              onFocus={(event) => event.currentTarget.select()}
+              value={draft}
+              disabled={busy}
+              onChange={(event) => setDraft(event.target.value)}
+              onBlur={() => void submitRename()}
+              onKeyDown={(event) => {
+                if (event.key === "Escape") {
+                  setDraft(session.title);
+                  reset();
+                }
+              }}
+              aria-label="Chat title"
+              className="h-7 min-w-0 flex-1 rounded-control border border-line-strong bg-field px-2
+                text-label text-ink outline-none focus:border-ink-3"
+            />
+          </form>
+        ) : (
           <button
             type="button"
-            onClick={() => onManage(session)}
-            aria-label={`Manage ${session.title}`}
-            className="grid size-8 shrink-0 place-items-center rounded-control text-ink-3 hover:bg-hover"
+            onClick={() => onSelect(session)}
+            aria-current={active ? "page" : undefined}
+            className="flex min-w-0 flex-1 items-center gap-2 py-2 text-left"
           >
-            ···
+            <span aria-hidden className="text-ink-3">
+              {session.kind === "scheduled" ? "◷" : depth > 0 ? "└" : "•"}
+            </span>
+            <span className="min-w-0 flex-1 truncate">{session.title}</span>
+            {session.kind === "scheduled" && unreadScheduledCount > 0 && (
+              <span className="rounded-chip bg-accent-tint px-1.5 text-meta text-ink">
+                {unreadScheduledCount}
+              </span>
+            )}
           </button>
         )}
+        {active && session.kind !== "scheduled" && mode === "idle" && (
+          <Menu label={`Manage ${session.title}`} align="end" trigger={<span aria-hidden>···</span>}>
+            {(close) => (
+              <>
+                <MenuItem
+                  icon={<IconEdit size={14} />}
+                  label="Rename"
+                  onSelect={() => {
+                    close();
+                    setDraft(session.title);
+                    setMode("rename");
+                  }}
+                />
+                <MenuItem
+                  icon={<IconTrash size={14} />}
+                  label="Delete"
+                  tone="danger"
+                  onSelect={() => {
+                    close();
+                    setMode("delete");
+                  }}
+                />
+              </>
+            )}
+          </Menu>
+        )}
       </div>
+      {mode === "delete" && (
+        <div
+          role="alertdialog"
+          aria-label="Delete chat"
+          className="mx-2 mt-1 mb-1.5 rounded-control border border-line bg-surface p-2.5"
+          style={{ animation: "fade-in var(--duration-quick) ease-out both" }}
+        >
+          <p className="text-meta leading-snug text-ink-2">
+            Delete this chat{children.length > 0 ? " and every branch below it" : ""}?
+          </p>
+          <div className="mt-2 flex justify-end gap-1.5">
+            <button
+              type="button"
+              onClick={reset}
+              className="h-7 rounded-control px-2.5 text-label font-medium text-ink-2 hover:bg-hover hover:text-ink"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              autoFocus
+              disabled={busy}
+              onClick={() => void submitDelete()}
+              className="h-7 rounded-control bg-red px-2.5 text-label font-medium text-white
+                disabled:opacity-60"
+            >
+              {busy ? "Deleting…" : "Delete"}
+            </button>
+          </div>
+        </div>
+      )}
+      {error && (
+        <p className="mx-2 mb-1 px-1 text-meta text-red" role="alert">
+          {error}
+        </p>
+      )}
       {children.length > 0 && (
         <ul>
           {children.map((child) => (
@@ -72,7 +191,8 @@ function SessionBranch({
               childrenByParent={childrenByParent}
               activeSessionId={activeSessionId}
               onSelect={onSelect}
-              onManage={onManage}
+              onRename={onRename}
+              onDelete={onDelete}
               unreadScheduledCount={unreadScheduledCount}
               depth={depth + 1}
             />
@@ -133,37 +253,33 @@ export function ProjectSidebar({
     onClose();
   }
 
-  async function manage(session: ProjectSession) {
-    const title = window.prompt(
-      `Rename “${session.title}”. Leave blank to delete this session and its branches.`,
-      session.title,
+  async function rename(session: ProjectSession, title: string) {
+    const response = await fetch(
+      `/api/projects/${session.project_id}/sessions/${session.session_id}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title }),
+      },
     );
-    if (title === null) return;
-    if (title.trim()) {
-      const response = await fetch(
-        `/api/projects/${session.project_id}/sessions/${session.session_id}`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title: title.trim() }),
-        },
-      );
-      if (response.ok) router.refresh();
-      return;
-    }
-    if (!window.confirm("Delete this session and every branch below it?")) return;
+    if (!response.ok) return "The chat could not be renamed.";
+    router.refresh();
+    return null;
+  }
+
+  async function remove(session: ProjectSession) {
     const response = await fetch(
       `/api/projects/${session.project_id}/sessions/${session.session_id}`,
       { method: "DELETE" },
     );
     if (!response.ok) {
       const body = (await response.json().catch(() => ({}))) as { error?: string };
-      window.alert(body.error ?? "The session could not be deleted.");
-      return;
+      return body.error ?? "The chat could not be deleted.";
     }
     const body = (await response.json()) as { activeSessionId: string };
     router.replace(`/p/${session.project_id}/s/${body.activeSessionId}`);
     router.refresh();
+    return null;
   }
 
   const content = (
@@ -248,7 +364,8 @@ export function ProjectSidebar({
                         childrenByParent={children}
                         activeSessionId={activeSessionId}
                         onSelect={select}
-                        onManage={manage}
+                        onRename={rename}
+                        onDelete={remove}
                         unreadScheduledCount={project.unread_scheduled_count}
                       />
                     ))}
@@ -274,7 +391,7 @@ export function ProjectSidebar({
             type="button"
             aria-label="Close sidebar"
             onClick={onClose}
-            className="absolute inset-0 bg-black/40"
+            className="absolute inset-0 bg-scrim"
           />
           <div className="relative h-full shadow-overlay">{content}</div>
         </div>

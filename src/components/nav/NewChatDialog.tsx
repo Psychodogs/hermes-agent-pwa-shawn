@@ -79,7 +79,7 @@ function NewChatConfirm({
         type="button"
         aria-label="Close"
         onClick={onClose}
-        className="absolute inset-0 bg-black/40"
+        className="absolute inset-0 bg-scrim"
         style={{ animation: "fade-in var(--duration-quick) ease-out both" }}
       />
       <div

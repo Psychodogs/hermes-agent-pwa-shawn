@@ -33,7 +33,7 @@ export function HeaderMenu({
 
   return (
     <>
-      <Menu label="Menu" trigger={<IconSettings size={17} />}>
+      <Menu label="Menu" align="end" trigger={<IconSettings size={17} />}>
         {(close) => (
           <>
             {project && (
