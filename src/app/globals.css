@@ -64,6 +64,8 @@
   --shadow-raised: 0 0 0 1px var(--line), var(--shadow-md);
   --shadow-overlay: 0 0 0 1px var(--line), var(--shadow-lg);
   --shadow-inset-field: inset 0 1px 2px oklch(0% 0 0 / 0.12);
+  /* behind dialogs, sheets and the drawer */
+  --scrim: oklch(0% 0 0 / 0.4);
 }
 
 /* The default, and the mode the palette was designed in — the screenshot this
@@ -110,10 +112,14 @@
   --shadow-raised: 0 0 0 1px oklch(100% 0 0 / 0.09), 0 2px 10px oklch(0% 0 0 / 0.22);
   --shadow-overlay: 0 0 0 1px oklch(100% 0 0 / 0.11), 0 8px 28px oklch(0% 0 0 / 0.34);
   --shadow-inset-field: inset 0 1px 2px oklch(0% 0 0 / 0.4);
+  /* Black at 40% over a #0a0a0a page changes almost nothing, so dialogs read
+     as floating on top of live thread text. Darker here to actually recede. */
+  --scrim: oklch(0% 0 0 / 0.7);
 }
 
 @theme inline {
   --color-page: var(--page);
+  --color-scrim: var(--scrim);
   --color-canvas: var(--canvas);
   --color-surface: var(--surface);
   --color-inset: var(--inset);

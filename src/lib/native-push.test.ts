@@ -40,7 +40,10 @@ beforeAll(async () => {
   notificationsRoute = await import("@/app/api/v1/notifications/route");
 });
 
-afterAll(() => fs.rmSync(directory, { recursive: true, force: true }));
+afterAll(() => {
+  database.db.close();
+  fs.rmSync(directory, { recursive: true, force: true });
+});
 
 function request(method: string, body?: unknown, key = `request-${method.toLowerCase()}-01`) {
   return new Request("http://test/api/v1/notifications", {
