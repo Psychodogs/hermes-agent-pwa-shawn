@@ -1,9 +1,11 @@
 "use client";
 
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { usePreferences } from "@/components/PreferencesContext";
 import { useAgentName } from "@/components/AgentNameContext";
 import { downscaleImage } from "@/lib/downscale";
+import { APP_SLUG } from "@/lib/branding";
+import { useShortcuts } from "@/hooks/useShortcuts";
 import {
   IconArrowUp,
   IconChip,
@@ -43,8 +45,31 @@ import type { Attachment } from "@/lib/chat-types";
 
 const MAX_ROWS_PX = 168;
 
+// useLayoutEffect logs on the server; this component renders there.
+const useIsomorphicLayoutEffect =
+  typeof window !== "undefined" ? useLayoutEffect : useEffect;
+
+/* Drafts are per device, like every other preference — a half-written prompt
+ * on the phone is not something the Mac should be finishing. Keyed by chat,
+ * so switching chats doesn't carry text into the wrong one. */
+function draftKey(projectId: string, sessionId: string) {
+  return `${APP_SLUG}.draft.${projectId}.${sessionId}`;
+}
+
+function writeDraft(key: string, text: string) {
+  try {
+    if (text.trim()) localStorage.setItem(key, text);
+    else localStorage.removeItem(key);
+  } catch {
+    // Private mode or a full quota: the draft just won't survive a reload.
+  }
+}
+
 export function Composer({
   projectId,
+  draftId,
+  history = [],
+  seed,
   onSend,
   onStop,
   onCommand,
@@ -63,6 +88,12 @@ export function Composer({
 }: {
   /** the upload route needs it to decide where a non-image file lands */
   projectId: string;
+  /** keys the saved draft; omit to keep the draft in memory only */
+  draftId?: string;
+  /** earlier prompts in this chat, oldest first, for ↑ recall */
+  history?: string[];
+  /** replaces the draft whenever `nonce` changes — "edit" on a sent message */
+  seed?: { text: string; nonce: number };
   onSend: (
     text: string,
     attachments: Attachment[],
@@ -95,6 +126,8 @@ export function Composer({
   const { prefs } = usePreferences();
   const agentName = useAgentName();
   const [draft, setDraft] = useState("");
+  /** index into `history` while ↑/↓ is browsing it, newest = length - 1 */
+  const [recall, setRecall] = useState<number | null>(null);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [uploading, setUploading] = useState(0);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -102,6 +135,67 @@ export function Composer({
   const [menuIndex, setMenuIndex] = useState(0);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const storageKey = draftId ? draftKey(projectId, draftId) : null;
+  const draftRef = useRef(draft);
+  useEffect(() => {
+    draftRef.current = draft;
+  });
+
+  // Restore before paint. The server can't see localStorage, so the first
+  // render is always empty and the stored text is applied here.
+  useIsomorphicLayoutEffect(() => {
+    if (!storageKey) return;
+    try {
+      const stored = localStorage.getItem(storageKey);
+      if (stored) {
+        // the ref too, or an unmount flush before the next render would
+        // write the empty first-render draft over the one just restored
+        draftRef.current = stored;
+        setDraft(stored);
+      }
+    } catch {
+      // unreadable storage — start empty
+    }
+  }, [storageKey]);
+
+  // Debounced while typing, and flushed when the page is hidden or the chat
+  // unmounts: iOS can evict a backgrounded tab without another event.
+  useEffect(() => {
+    if (!storageKey) return;
+    const timer = setTimeout(() => writeDraft(storageKey, draft), 300);
+    return () => clearTimeout(timer);
+  }, [draft, storageKey]);
+  useEffect(() => {
+    if (!storageKey) return;
+    const flush = () => writeDraft(storageKey, draftRef.current);
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") flush();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      flush();
+    };
+  }, [storageKey]);
+
+  // A new seed replaces the draft. Adjusted during render rather than in an
+  // effect, so the text and the caret land in the same frame.
+  const [seenSeed, setSeenSeed] = useState(seed?.nonce ?? 0);
+  if (seed && seed.nonce !== seenSeed) {
+    setSeenSeed(seed.nonce);
+    setDraft(seed.text);
+    setRecall(null);
+  }
+  useEffect(() => {
+    if (!seed?.nonce) return;
+    const el = inputRef.current;
+    if (!el) return;
+    el.focus();
+    el.setSelectionRange(el.value.length, el.value.length);
+  }, [seed?.nonce]);
+
+  useShortcuts([{ key: "/", mod: true, run: () => inputRef.current?.focus() }]);
 
   const { items: menuItems } = useMenuItems(menu, features, running);
   // Arrow keys skip the unrouted rows; they're listed, not offered.
@@ -152,6 +246,8 @@ export function Composer({
 
   const clear = () => {
     setDraft("");
+    setRecall(null);
+    if (storageKey) writeDraft(storageKey, "");
     setAttachments([]);
     setUploadError(null);
     setMenu(null);
@@ -274,7 +370,8 @@ export function Composer({
         key={errorNonce}
         className="relative isolate mx-auto flex w-full max-w-3xl flex-col gap-1.5
           rounded-[18px] border border-line bg-surface p-1.5 shadow-card
-          transition-[border-color] duration-150 focus-within:border-line-strong"
+          transition-[border-color,box-shadow] duration-150
+          focus-within:border-line-strong focus-within:shadow-raised"
         style={errorNonce > 0 ? { animation: "shake 400ms var(--ease-out-strong)" } : undefined}
       >
         {menu && menuOpen && (
@@ -365,6 +462,7 @@ export function Composer({
             value={draft}
             onChange={(event) => {
               setDraft(event.target.value);
+              setRecall(null);
               syncMenu(event.target.value, event.target.selectionStart ?? 0);
             }}
             // Clicking or arrowing into an existing @token should reopen the
@@ -416,6 +514,43 @@ export function Composer({
                   applyMenuItem(menuIndex >= 0 ? menuIndex : firstSelectable);
                   return;
                 }
+              }
+              /* ↑ in an empty box brings back the last prompt, the way a
+               * shell does. Only from an empty box (or one still showing a
+               * recalled prompt), so arrowing through a multi-line draft
+               * still moves the caret. */
+              if (
+                (event.key === "ArrowUp" || event.key === "ArrowDown") &&
+                !event.shiftKey &&
+                !event.altKey &&
+                !event.metaKey &&
+                !event.ctrlKey &&
+                history.length > 0 &&
+                (draft === "" || recall !== null)
+              ) {
+                const up = event.key === "ArrowUp";
+                const el = event.currentTarget;
+                // Inside a recalled multi-line prompt, let the caret move
+                // line by line until it is on the first (or last) line.
+                if (recall !== null) {
+                  const atEdge = up
+                    ? !el.value.slice(0, el.selectionStart).includes("\n")
+                    : !el.value.slice(el.selectionEnd).includes("\n");
+                  if (!atEdge) return;
+                }
+                if (!up && recall === null) return;
+                event.preventDefault();
+                const next =
+                  recall === null ? history.length - 1 : recall + (up ? -1 : 1);
+                if (next >= history.length) {
+                  setRecall(null);
+                  setDraft("");
+                  return;
+                }
+                const at = Math.max(0, next);
+                setRecall(at);
+                setDraft(history[at]);
+                return;
               }
               if (!prefs.sendOnEnter) return;
               if (
@@ -486,6 +621,16 @@ export function Composer({
               )}
             </div>
 
+            {running && canSend && (
+              <span
+                className="shrink-0 px-1 text-micro text-ink-3"
+                style={{ animation: "fade-in var(--duration-quick) ease-out both" }}
+              >
+                {/* attachments always queue — steer is text-only */}
+                {features.run_steer && attachments.length === 0 ? "steers the run" : "queues next"}
+              </span>
+            )}
+
             {/* Stop and send are two buttons, not one that morphs. A single
               * button meant that the moment a run started the only thing you
               * could do was kill it — the placeholder said "Steer the run…"
@@ -518,9 +663,11 @@ export function Composer({
               className="tap-target flex size-8 shrink-0 items-center
                 justify-center rounded-full transition-[background-color,color,transform] duration-200
                 enabled:active:scale-[0.94]"
+              // Disabled reads as recessed — field on surface, faint glyph —
+              // rather than a second grey that looks almost pressable.
               style={{
-                background: canSend ? "var(--ink)" : "var(--line-strong)",
-                color: canSend ? "var(--surface)" : "var(--ink-2)",
+                background: canSend ? "var(--ink)" : "var(--field)",
+                color: canSend ? "var(--surface)" : "var(--ink-3)",
               }}
             >
               <IconArrowUp size={16} />

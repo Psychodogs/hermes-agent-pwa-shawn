@@ -3,7 +3,8 @@
 import { CodeBlock } from "./CodeBlock";
 import { FileLinks } from "./FileLinks";
 import { parseRecommendation, RecommendationCard } from "./RecommendationCard";
-import { IconFile } from "@/components/primitives/icons";
+import { IconCheck, IconFile } from "@/components/primitives/icons";
+import { parseBlocks, type Block, type ListBlock } from "@/lib/markdown-blocks";
 import { RECOMMEND_FENCE } from "@/lib/chat-types";
 import type { Attachment, CronMeta, Recommendation } from "@/lib/chat-types";
 import { useAgentName } from "@/components/AgentNameContext";
@@ -118,6 +119,123 @@ export function renderInline(text: string): React.ReactNode[] {
   });
 }
 
+/* Block structure for the same declared-Markdown messages: headings, lists,
+ * quotes, rules and tables. `parseBlocks` only tokenises; every element here
+ * is built by React and every text field goes through renderInline, so the
+ * no-HTML guarantee above holds for blocks too. */
+
+function List({ list }: { list: ListBlock }) {
+  const Tag = list.ordered ? "ol" : "ul";
+  const tasks = list.items.some((item) => item.checked !== undefined);
+  return (
+    <Tag
+      start={list.ordered && list.start !== 1 ? list.start : undefined}
+      className={`flex flex-col gap-1 pl-5 marker:text-ink-3 ${
+        tasks ? "list-none pl-1" : list.ordered ? "list-decimal" : "list-disc"
+      }`}
+    >
+      {list.items.map((item, i) => (
+        <li key={i} className="pl-0.5 whitespace-pre-wrap [overflow-wrap:anywhere]">
+          {item.checked !== undefined && (
+            <span
+              aria-label={item.checked ? "done" : "not done"}
+              className={`mr-2 inline-grid size-3.5 translate-y-0.5 place-items-center rounded-[4px] ${
+                item.checked ? "bg-ink text-surface" : "shadow-[inset_0_0_0_1.5px_var(--line-strong)]"
+              }`}
+            >
+              {item.checked && <IconCheck size={10} strokeWidth={3} />}
+            </span>
+          )}
+          {renderInline(item.text)}
+          {item.children && (
+            <div className="mt-1">
+              <List list={item.children} />
+            </div>
+          )}
+        </li>
+      ))}
+    </Tag>
+  );
+}
+
+function MarkdownBlock({ block }: { block: Block }) {
+  switch (block.type) {
+    case "heading":
+      return (
+        <p
+          role="heading"
+          aria-level={block.level + 1}
+          className="mt-1.5 font-semibold text-ink first:mt-0 [overflow-wrap:anywhere]"
+          style={{
+            fontSize:
+              block.level === 1 ? "calc(var(--text-body) * 1.2)" : block.level === 2 ? "calc(var(--text-body) * 1.07)" : "var(--text-body)",
+            lineHeight: 1.35,
+          }}
+        >
+          {renderInline(block.text)}
+        </p>
+      );
+    case "list":
+      return (
+        <div className="text-body text-ink">
+          <List list={block} />
+        </div>
+      );
+    case "quote":
+      return (
+        <blockquote className="flex flex-col gap-2 border-l-2 border-line-strong pl-3 text-ink-2">
+          {block.blocks.map((inner, i) => (
+            <MarkdownBlock key={i} block={inner} />
+          ))}
+        </blockquote>
+      );
+    case "rule":
+      return <hr className="my-1 border-line" />;
+    case "table":
+      return (
+        // its own horizontal scroll, so a wide table never widens the thread
+        <div className="scroll-area -mx-0.5 overflow-x-auto rounded-control p-0.5">
+          <table className="w-full border-collapse overflow-hidden rounded-control text-label text-ink shadow-hairline">
+            <thead className="bg-field">
+              <tr>
+                {block.header.map((cell, c) => (
+                  <th
+                    key={c}
+                    className="px-2.5 py-1.5 font-semibold whitespace-nowrap"
+                    style={{ textAlign: block.align[c] ?? "left" }}
+                  >
+                    {renderInline(cell)}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {block.rows.map((row, r) => (
+                <tr key={r} className="border-t border-line">
+                  {row.map((cell, c) => (
+                    <td
+                      key={c}
+                      className="px-2.5 py-1.5 align-top [overflow-wrap:anywhere]"
+                      style={{ textAlign: block.align[c] ?? "left" }}
+                    >
+                      {renderInline(cell)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+    case "paragraph":
+      return (
+        <p className="text-body whitespace-pre-wrap text-ink [overflow-wrap:anywhere]">
+          {renderInline(block.text)}
+        </p>
+      );
+  }
+}
+
 export function MessageBody({
   content,
   streaming = false,
@@ -141,13 +259,18 @@ export function MessageBody({
   return (
     <>
       {segments.map((segment, i) => {
+        if (segment.kind !== "code" && markdown) {
+          return parseBlocks(segment.value).map((block, b) => (
+            <MarkdownBlock key={`${i}.${b}`} block={block} />
+          ));
+        }
         if (segment.kind !== "code") {
           return (
             <p
               key={i}
               className="text-body whitespace-pre-wrap text-ink [overflow-wrap:anywhere]"
             >
-              {markdown ? renderInline(segment.value.trim()) : segment.value.trim()}
+              {segment.value.trim()}
             </p>
           );
         }
@@ -231,13 +354,15 @@ export function AttachmentStrip({
 export function UserMessage({
   content,
   attachments,
+  footer,
 }: {
   content: string;
   attachments?: Attachment[];
+  footer?: React.ReactNode;
 }) {
   return (
     <div
-      className="flex flex-col items-end gap-1.5 pl-6"
+      className="group/msg flex flex-col items-end gap-1.5 pl-6"
       style={{ animation: "fade-up var(--duration-medium) var(--ease-out-strong) both" }}
     >
       {attachments && attachments.length > 0 && (
@@ -257,6 +382,7 @@ export function UserMessage({
         text={content}
         exclude={(attachments ?? []).flatMap((a) => (a.path ? [a.path] : []))}
       />
+      {footer}
     </div>
   );
 }
@@ -287,7 +413,7 @@ export function AssistantMessage({
 
   return (
     <div
-      className="flex w-full flex-col gap-1.5 transition-[opacity,filter,transform] duration-400"
+      className="group/msg flex w-full flex-col gap-1.5 transition-[opacity,filter,transform] duration-400"
       style={{
         opacity: resolving ? 0.55 : 1,
         filter: resolving ? "blur(var(--blur-subtle))" : "blur(0)",
@@ -297,7 +423,7 @@ export function AssistantMessage({
         animation: "fade-up var(--duration-slow) var(--ease-out-strong) both",
       }}
     >
-      <div className="text-meta font-semibold tracking-[0.06em] text-ink-3 uppercase">
+      <div className="text-micro font-semibold tracking-[0.08em] text-ink-3 uppercase">
         {agentName}
       </div>
       <div className="flex flex-col gap-2.5">
@@ -338,17 +464,19 @@ export function CronMessage({
   content,
   meta,
   markdown,
+  footer,
 }: {
   content: string;
   meta: CronMeta;
   markdown: boolean;
+  footer?: React.ReactNode;
 }) {
   return (
     <div
-      className="flex w-full flex-col gap-1.5"
+      className="group/msg flex w-full flex-col gap-1.5"
       style={{ animation: "fade-up var(--duration-slow) var(--ease-out-strong) both" }}
     >
-      <div className="text-meta font-semibold tracking-[0.06em] text-ink-3 uppercase">
+      <div className="text-micro font-semibold tracking-[0.08em] text-ink-3 uppercase">
         Scheduled · {meta.jobName}
         {meta.status === "failed" ? " · failed" : ""}
       </div>
@@ -360,6 +488,7 @@ export function CronMessage({
           * a path is no more evidence than an interactive one. */}
         <FileLinks text={content} />
       </div>
+      {footer}
     </div>
   );
 }

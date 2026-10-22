@@ -259,3 +259,29 @@ export const IconQuestion = (p: IconProps) => (
     <path d="M12 17.5v.5" strokeWidth={p.strokeWidth ?? 2.6} />
   </Svg>
 );
+
+export const IconKeyboard = (p: IconProps) => (
+  <Svg {...p}>
+    <rect x="2" y="6" width="20" height="12" rx="2" />
+    <path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10" />
+  </Svg>
+);
+
+export const IconPin = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M12 17v5M9 10.8V4h6v6.8l3 3.2v2H6v-2z" />
+  </Svg>
+);
+
+export const IconCopy = (p: IconProps) => (
+  <Svg {...p}>
+    <rect x="9" y="9" width="12" height="12" rx="2" />
+    <path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1" />
+  </Svg>
+);
+
+export const IconShare = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M12 3v12M8 7l4-4 4 4M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7" />
+  </Svg>
+);

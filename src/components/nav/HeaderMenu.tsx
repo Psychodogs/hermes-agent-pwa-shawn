@@ -5,10 +5,12 @@ import { useRouter } from "next/navigation";
 import { Menu, MenuItem, MenuSeparator } from "@/components/ui/Menu";
 import {
   IconEdit,
+  IconKeyboard,
   IconSearch,
   IconSettings,
 } from "@/components/primitives/icons";
 import { ProjectSettingsSheet } from "./ProjectSettings";
+import { useKeyboardMod } from "@/hooks/useShortcuts";
 import type { Project } from "@/lib/chat-types";
 
 /* The header's left slot. It was a gear that opened the project edit form
@@ -22,14 +24,18 @@ export function HeaderMenu({
   project,
   activeSessionId,
   onSearch,
+  onShortcuts,
 }: {
   project?: Project;
   activeSessionId?: string;
   /** opens the cross-project search overlay, owned by the shell */
   onSearch?: () => void;
+  /** opens the keyboard cheatsheet — only offered where there is a keyboard */
+  onShortcuts?: () => void;
 }) {
   const router = useRouter();
   const [editOpen, setEditOpen] = useState(false);
+  const mod = useKeyboardMod();
 
   return (
     <>
@@ -50,9 +56,21 @@ export function HeaderMenu({
               <MenuItem
                 icon={<IconSearch size={14} />}
                 label="Search"
+                hint={mod ? `${mod}K` : undefined}
                 onSelect={() => {
                   close();
                   onSearch();
+                }}
+              />
+            )}
+            {onShortcuts && mod && (
+              <MenuItem
+                icon={<IconKeyboard size={14} />}
+                label="Keyboard shortcuts"
+                hint="?"
+                onSelect={() => {
+                  close();
+                  onShortcuts();
                 }}
               />
             )}

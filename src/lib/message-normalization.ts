@@ -13,7 +13,8 @@ export function messageContentFormat(message: HermesMessage): MessageContentForm
   return message.role === "assistant" || message.role === "cron" ? "markdown" : "plain";
 }
 
-function messageTime(message: HermesMessage): number | null {
+/** Epoch ms, or null when Hermes didn't stamp the row. */
+export function messageTime(message: HermesMessage): number | null {
   const raw = message.timestamp;
   if (typeof raw === "number") return raw < 1e12 ? raw * 1000 : raw;
   if (typeof raw === "string") {

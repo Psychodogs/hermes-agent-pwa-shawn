@@ -30,7 +30,7 @@ The header's pencil is "new chat", and it means the narrow thing: point *this*
 project at a fresh Hermes session, keeping its name, instructions, skills and
 id (`POST /api/projects/[id]/reset`, `NewChatDialog`). It confirms first,
 because it is the one action that discards continuity. A new *project* is the
-rail's `+` tile, and only that.
+sidebar's `+`, and only that.
 
 ```
 iPhone / Mac PWA  (installed, https://<node>.<tailnet>.ts.net)
@@ -47,7 +47,7 @@ pnpm dev            # dev server (Turbopack is the default in Next 16)
 pnpm build          # next build
 pnpm start          # production server
 pnpm lint           # eslint — CI-equivalent is: npx eslint src --max-warnings=0
-npx tsc --noEmit    # typecheck
+pnpm typecheck      # next typegen && tsc --noEmit (bare tsc lacks the route types)
 ```
 
 There is no test suite. Verification is done by running the app against a live
@@ -109,6 +109,9 @@ Never make the browser talk to `:8642` directly.
 | `src/app/settings/**` | The app-wide settings page. |
 | `src/components/chat/**` | Thread UI, adapted from beautifului.dev. |
 | `src/hooks/useThread.ts` | The run state machine — every SSE event is decoded here. |
+| `src/hooks/useShortcuts.ts` | Desktop keyboard shortcuts. Each owner registers its own bindings; unmodified keys never fire in a text field, and nothing fires while a dialog or menu is open. |
+| `src/lib/markdown-blocks.ts` | Tokenises generated Markdown into blocks (headings, lists, quotes, tables). Produces data, never markup — `Message.tsx` builds the elements. |
+| `src/lib/thread-messages.ts` | History rows → `ThreadMessage`, shared by the server loader and the post-run refresh. |
 | `public/sw.js` | Service worker. Push only — no fetch handler, no precache. |
 
 ## Key invariants
@@ -168,7 +171,9 @@ history comes back from Hermes as text and nothing else.
 required `content_format` field after normalising Hermes history: assistant and
 cron output is `markdown`, while user, system and tool text is `plain`. The web
 thread and Android render only messages declared as Markdown; user-authored
-text remains literal. Neither client renders agent-supplied HTML. Notification
+text remains literal. On the web, block structure comes from `parseBlocks()` and inline
+spans from `renderInline()`; both yield React elements, so there is still no
+HTML path. Neither client renders agent-supplied HTML. Notification
 previews use the shared plain-text projection because push surfaces cannot
 render Markdown.
 
@@ -522,8 +527,10 @@ demos (`demo`/`loop` props, scripted `setTimeout` phase machines) that were
 converted to be data-driven. Its colour tokens (`--ink`, `--surface`, `--field`,
 `--line`, `--accent`, …) are in `globals.css` and everything depends on them.
 The library's `SidebarNav` and the local `GlideMenu` reimplementation it
-depended on are both gone: navigation is the project rail hanging off the
-header title, not a sidebar.
+depended on are both gone: navigation is `ProjectSidebar`, a permanent
+column from `lg` up and a drawer behind the header's menu button below it.
+The header's run dot (`RunDot`, fed by `RunStatusContext`) is the only
+at-a-glance signal of a live run once the thread has scrolled past it.
 
 **Keyframes must be declared at the top level of `globals.css`, never inside
 `@theme`.** Tailwind v4 treats keyframes in `@theme` as theme keyframes and

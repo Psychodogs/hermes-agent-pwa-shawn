@@ -83,7 +83,7 @@ function ProjectSettingsForm({
   }, [project.id]);
 
   /** Archive, not delete: keeps every row and the Hermes transcript, and just
-   *  drops the project out of the rail. Reversible from /settings. */
+   *  drops the project out of the sidebar. Reversible from /settings. */
   async function archive() {
     if (busy) return;
     setBusy(true);
@@ -295,7 +295,7 @@ function ProjectSettingsForm({
           onChange={(event) => setPinned(event.target.checked)}
           className="size-4 accent-[var(--ink)]"
         />
-        Pin to the front of the project rail
+        Pin to the top of the sidebar
       </label>
 
       {error && (

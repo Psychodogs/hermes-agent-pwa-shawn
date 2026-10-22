@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useKeyboardMod } from "@/hooks/useShortcuts";
 import { IconCross, IconMessage, IconSearch } from "@/components/primitives/icons";
 
 /* Cross-project search. Full-screen rather than a dropdown: on a phone the
@@ -76,6 +78,9 @@ function SearchPanel({ onClose }: { onClose: () => void }) {
   const [results, setResults] = useState<Results>(EMPTY);
   const [pending, setPending] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+  const hasKeyboard = useKeyboardMod() !== null;
 
   const trimmed = query.trim();
   // Two characters is the floor the route enforces too; below it there is
@@ -118,8 +123,36 @@ function SearchPanel({ onClose }: { onClose: () => void }) {
   const empty =
     active && !loading && shown.projects.length === 0 && shown.messages.length === 0;
 
+  /* Enter opens the top hit, which is what makes ⌘K a project switcher:
+   * two letters of a project name and Return. Arrow keys walk the rows. */
+  const firstHref = shown.projects[0]
+    ? `/p/${shown.projects[0].id}`
+    : shown.messages[0]
+      ? `/p/${shown.messages[0].projectId}/s/${shown.messages[0].sessionId}`
+      : shown.deliveries[0]
+        ? `/p/${shown.deliveries[0].projectId}/s/${shown.deliveries[0].sessionId}`
+        : null;
+
+  const rows = () => Array.from(listRef.current?.querySelectorAll<HTMLElement>("a") ?? []);
+  const onListKey = (event: React.KeyboardEvent) => {
+    if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+    const all = rows();
+    const at = all.indexOf(document.activeElement as HTMLElement);
+    event.preventDefault();
+    if (event.key === "ArrowUp" && at <= 0) {
+      inputRef.current?.focus();
+      return;
+    }
+    all[Math.min(all.length - 1, at + (event.key === "ArrowDown" ? 1 : -1))]?.focus();
+  };
+
   return (
-    <div className="h-app fixed inset-x-0 top-0 z-60 flex flex-col bg-page">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Search"
+      className="h-app fixed inset-x-0 top-0 z-60 flex flex-col bg-page"
+    >
       <div className="pt-safe shrink-0 border-b border-line bg-page">
         <div className="px-safe flex h-14 items-center gap-2">
           <div className="flex min-w-0 flex-1 items-center gap-2 rounded-control border border-line
@@ -131,6 +164,16 @@ function SearchPanel({ onClose }: { onClose: () => void }) {
               ref={inputRef}
               value={query}
               onChange={(event) => setQuery(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && !event.nativeEvent.isComposing && firstHref) {
+                  event.preventDefault();
+                  router.push(firstHref);
+                  onClose();
+                } else if (event.key === "ArrowDown") {
+                  event.preventDefault();
+                  rows()[0]?.focus();
+                }
+              }}
               type="search"
               placeholder="Search projects and prompts…"
               aria-label="Search"
@@ -151,7 +194,11 @@ function SearchPanel({ onClose }: { onClose: () => void }) {
         </div>
       </div>
 
-      <div className="scroll-area min-h-0 flex-1 overflow-y-auto overscroll-contain">
+      <div
+        ref={listRef}
+        onKeyDown={onListKey}
+        className="scroll-area min-h-0 flex-1 overflow-y-auto overscroll-contain"
+      >
         <div className="px-safe pb-safe mx-auto w-full max-w-3xl pt-2">
           {!active && (
             <p className="py-10 text-center text-label text-ink-3">
@@ -167,9 +214,10 @@ function SearchPanel({ onClose }: { onClose: () => void }) {
 
           {shown.projects.length > 0 && (
             <Section label="Projects">
-              {shown.projects.map((hit) => (
+              {shown.projects.map((hit, i) => (
                 <Row
                   key={hit.id}
+                  enterHint={hasKeyboard && i === 0}
                   href={`/p/${hit.id}`}
                   onNavigate={onClose}
                   glyph={hit.emoji ?? hit.name.trim().charAt(0).toUpperCase() ?? "•"}
@@ -182,9 +230,10 @@ function SearchPanel({ onClose }: { onClose: () => void }) {
 
           {shown.messages.length > 0 && (
             <Section label="Prompts">
-              {shown.messages.map((hit) => (
+              {shown.messages.map((hit, i) => (
                 <Row
                   key={hit.runId}
+                  enterHint={hasKeyboard && i === 0 && shown.projects.length === 0}
                   href={`/p/${hit.projectId}/s/${hit.sessionId}`}
                   onNavigate={onClose}
                   icon={<IconMessage size={14} />}
@@ -199,9 +248,15 @@ function SearchPanel({ onClose }: { onClose: () => void }) {
 
           {shown.deliveries.length > 0 && (
             <Section label="Scheduled">
-              {shown.deliveries.map((hit) => (
+              {shown.deliveries.map((hit, i) => (
                 <Row
                   key={hit.id}
+                  enterHint={
+                    hasKeyboard &&
+                    i === 0 &&
+                    shown.projects.length === 0 &&
+                    shown.messages.length === 0
+                  }
                   href={`/p/${hit.projectId}/s/${hit.sessionId}`}
                   onNavigate={onClose}
                   icon={<IconMessage size={14} />}
@@ -250,7 +305,10 @@ function Row({
   icon,
   title,
   detail,
+  enterHint = false,
 }: {
+  /** this row is what Return in the search field opens */
+  enterHint?: boolean;
   href: string;
   onNavigate: () => void;
   glyph?: string;
@@ -263,7 +321,8 @@ function Row({
       href={href}
       onClick={onNavigate}
       className="-mx-1 flex min-h-11 items-center gap-2.5 rounded-control px-1 py-1.5
-        transition-colors duration-100 hover:bg-hover-2 active:scale-[0.99]"
+        transition-colors duration-100 hover:bg-hover-2 focus-visible:bg-hover-2
+        focus-visible:outline-none active:scale-[0.99]"
     >
       <span className="grid size-8 shrink-0 place-items-center rounded-control bg-canvas text-ink-3 shadow-hairline">
         {icon ?? <span className="text-[15px] leading-none">{glyph}</span>}
@@ -272,6 +331,11 @@ function Row({
         <span className="truncate text-label font-medium text-ink">{title}</span>
         {detail && <span className="truncate text-meta text-ink-3">{detail}</span>}
       </span>
+      {enterHint && (
+        <kbd className="shrink-0 rounded-chip bg-field px-1.5 font-mono text-meta text-ink-3 shadow-hairline">
+          ↵
+        </kbd>
+      )}
     </Link>
   );
 }

@@ -1,19 +1,23 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { NewProjectDialog } from "@/components/nav/NewProjectDialog";
 import { NewChatDialog } from "@/components/nav/NewChatDialog";
 import { ProjectSidebar } from "@/components/nav/ProjectSidebar";
 import { HeaderMenu } from "@/components/nav/HeaderMenu";
 import { SearchOverlay } from "@/components/nav/SearchOverlay";
+import { ShortcutsSheet } from "@/components/nav/ShortcutsSheet";
 import { RunStatusProvider } from "@/components/chat/RunStatusContext";
+import { RunDot } from "@/components/chat/RunDot";
+import { useShortcuts } from "@/hooks/useShortcuts";
+import { sessionsRecentFirst } from "@/lib/session-order";
 import { AppActionsProvider } from "@/components/AppActionsContext";
 import { IconEdit, IconMenu } from "@/components/primitives/icons";
 import type { Project, ProjectSession } from "@/lib/chat-types";
 
-/* One column, no sidebar. Switching projects is the rail hanging off the
- * header title; the drawer and the lg-and-up sidebar it mirrored are gone.
+/* Projects and their chats live in ProjectSidebar: a permanent column from
+ * `lg` up, a drawer behind the header's menu button below that.
  *
  * h-app rather than visualViewport.height, and the distinction is the whole
  * point. When the keyboard opens WebKit *pans* the visual viewport to reveal
@@ -51,7 +55,37 @@ export function AppShell({
   const [newChatOpen, setNewChatOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const router = useRouter();
+
+  // The current project's chats in sidebar order, for ⌥↑ / ⌥↓.
+  const siblings = useMemo(
+    () => sessionsRecentFirst(sessions.filter((s) => s.project_id === activeId)),
+    [sessions, activeId],
+  );
+  const activeSession = siblings.find((s) => s.session_id === activeSessionId);
+  const sessionTitle = activeSession?.title ?? title;
+
+  function stepSession(delta: 1 | -1) {
+    const at = siblings.findIndex((s) => s.session_id === activeSessionId);
+    const next = siblings[at + delta];
+    if (at === -1 || !next) return;
+    router.push(`/p/${next.project_id}/s/${next.session_id}`);
+  }
+
+  useShortcuts([
+    { key: "k", mod: true, run: () => setSearchOpen(true) },
+    {
+      key: "o",
+      mod: true,
+      shift: true,
+      when: Boolean(activeProject),
+      run: () => setNewChatOpen(true),
+    },
+    { key: "ArrowUp", alt: true, when: siblings.length > 1, run: () => stepSession(-1) },
+    { key: "ArrowDown", alt: true, when: siblings.length > 1, run: () => stepSession(1) },
+    { key: "?", run: () => setShortcutsOpen(true) },
+  ]);
 
   // Record the normal-chat fallback without making navigation shared across
   // devices. Scheduled selections deliberately leave that fallback alone.
@@ -143,9 +177,23 @@ export function AppShell({
                   </button>
                 </div>
 
-                <div className="flex min-w-0 items-center justify-center">
-                  <h1 className="max-w-full truncate px-3 text-ui font-semibold text-ink">
-                    {title}
+                {/* Project first, then the chat: on a phone the project is the
+                  * thing you lose track of. The chat name gives way first. */}
+                <div className="flex min-w-0 items-center justify-center gap-2 px-3">
+                  <RunDot />
+                  <h1 className="flex min-w-0 items-baseline gap-1.5 text-ui font-semibold text-ink">
+                    {/* A project's first chat is named after it; saying it twice is noise. */}
+                    {activeProject && sessionTitle && sessionTitle !== activeProject.name ? (
+                      <>
+                        <span className="min-w-0 max-w-[60%] truncate">{activeProject.name}</span>
+                        <span aria-hidden className="text-ink-3">·</span>
+                        <span className="min-w-0 shrink-[4] truncate font-medium text-ink-2">
+                          {sessionTitle}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="truncate">{activeProject?.name ?? title}</span>
+                    )}
                   </h1>
                 </div>
 
@@ -154,6 +202,7 @@ export function AppShell({
                     project={activeProject}
                     activeSessionId={activeSessionId}
                     onSearch={() => setSearchOpen(true)}
+                    onShortcuts={() => setShortcutsOpen(true)}
                   />
                   <button
                     type="button"
@@ -187,6 +236,7 @@ export function AppShell({
         />
       )}
       <SearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />
+      <ShortcutsSheet open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
     </div>
   );
 }

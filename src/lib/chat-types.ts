@@ -45,6 +45,8 @@ export interface ThreadMessage {
   contentFormat: MessageContentFormat;
   /** present exactly when role is "cron" */
   cron?: CronMeta;
+  /** epoch ms, from history only — a turn still streaming has none yet */
+  createdAt?: number;
   /**
    * Local to the live turn. History is re-read from Hermes, which returns the
    * text only — but every attachment's path is also named in the prompt text,

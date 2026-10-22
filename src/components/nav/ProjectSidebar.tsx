@@ -5,10 +5,18 @@ import { useRouter } from "next/navigation";
 import {
   IconChevronRight,
   IconEdit,
+  IconPin,
   IconPlus,
+  IconSearch,
+  IconSettings,
   IconTrash,
 } from "@/components/primitives/icons";
 import { Menu, MenuItem } from "@/components/ui/Menu";
+import { RunDot } from "@/components/chat/RunDot";
+import { useAppActions } from "@/components/AppActionsContext";
+import { useShortcuts } from "@/hooks/useShortcuts";
+import { APP_NAME } from "@/lib/branding";
+import { ProjectSettingsSheet } from "./ProjectSettings";
 import type { Project, ProjectSession } from "@/lib/chat-types";
 import { sessionsRecentFirst } from "@/lib/session-order";
 
@@ -112,6 +120,7 @@ function SessionBranch({
               {session.kind === "scheduled" ? "◷" : depth > 0 ? "└" : "•"}
             </span>
             <span className="min-w-0 flex-1 truncate">{session.title}</span>
+            {active && <RunDot />}
             {session.kind === "scheduled" && unreadScheduledCount > 0 && (
               <span className="rounded-chip bg-accent-tint px-1.5 text-meta text-ink">
                 {unreadScheduledCount}
@@ -221,9 +230,27 @@ export function ProjectSidebar({
   onNewProject: () => void;
 }) {
   const router = useRouter();
+  const { openSearch } = useAppActions();
   const [expanded, setExpanded] = useState<Set<string>>(
     () => new Set(activeProjectId ? [activeProjectId] : []),
   );
+  // Navigating into a project from anywhere else — search, a notification, a
+  // shortcut — should open its branch here too, without collapsing the ones
+  // the reader opened by hand. Adjusted during render, not in an effect, so
+  // there is no frame where the active project is drawn shut.
+  const [seenActive, setSeenActive] = useState(activeProjectId);
+  if (activeProjectId !== seenActive) {
+    setSeenActive(activeProjectId);
+    if (activeProjectId && !expanded.has(activeProjectId)) {
+      setExpanded(new Set(expanded).add(activeProjectId));
+    }
+  }
+  const [editing, setEditing] = useState<Project | null>(null);
+  const [query, setQuery] = useState("");
+  const needle = query.trim().toLowerCase();
+  // A short list is faster to scan than to search.
+  const showFilter = projects.length > 6;
+
   const sessionsByProject = useMemo(() => {
     const map = new Map<string, ProjectSession[]>();
     for (const session of sessions) {
@@ -236,6 +263,19 @@ export function ProjectSidebar({
     }
     return map;
   }, [sessions]);
+
+  // `/` jumps to the filter. Both copies of the sidebar can be mounted (the
+  // permanent column and the drawer), so focus whichever one is on screen.
+  useShortcuts([
+    {
+      key: "/",
+      when: showFilter,
+      run: () => {
+        const fields = document.querySelectorAll<HTMLInputElement>("[data-sidebar-filter]");
+        Array.from(fields).find((field) => field.offsetParent !== null)?.focus();
+      },
+    },
+  ]);
 
   function select(session: ProjectSession) {
     // The URL contains the durable ID, so duplicate display titles can never
@@ -251,6 +291,15 @@ export function ProjectSidebar({
     const body = (await response.json()) as { sessionId: string };
     router.push(`/p/${project.id}/s/${body.sessionId}`);
     onClose();
+  }
+
+  async function togglePin(project: Project) {
+    const response = await fetch(`/api/projects/${project.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pinned: project.pinned !== 1 }),
+    });
+    if (response.ok) router.refresh();
   }
 
   async function rename(session: ProjectSession, title: string) {
@@ -282,102 +331,225 @@ export function ProjectSidebar({
     return null;
   }
 
+  /* While filtering, the branch structure is dropped: a matching fork whose
+   * parent doesn't match would otherwise be unreachable. A project whose own
+   * name matches keeps all of its chats. */
+  const visible = projects.flatMap((project) => {
+    const projectSessions = sessionsByProject.get(project.id) ?? [];
+    if (!needle) return [{ project, sessions: projectSessions, flat: false }];
+    if (project.name.toLowerCase().includes(needle)) {
+      return [{ project, sessions: projectSessions, flat: false }];
+    }
+    const hits = projectSessions.filter((s) => s.title.toLowerCase().includes(needle));
+    return hits.length > 0 ? [{ project, sessions: hits, flat: true }] : [];
+  });
+  const anyPinned = visible.some(({ project }) => project.pinned === 1);
+
+  const renderProject = ({
+    project,
+    sessions: projectSessions,
+    flat,
+  }: (typeof visible)[number]) => {
+    const roots = flat
+      ? projectSessions
+      : projectSessions.filter((session) => !session.parent_session_id);
+    const children = new Map<string | null, ProjectSession[]>();
+    if (!flat) {
+      for (const session of projectSessions) {
+        const rows = children.get(session.parent_session_id) ?? [];
+        rows.push(session);
+        children.set(session.parent_session_id, rows);
+      }
+    }
+    const isOpen = needle.length > 0 || expanded.has(project.id);
+    const active = project.id === activeProjectId;
+    return (
+      <li key={project.id}>
+        <div
+          className={`group flex min-h-10 w-full items-center rounded-control text-label font-medium transition-colors ${
+            // Open, the active chat row below carries the highlight; drawing
+            // both would make two rows look selected.
+            active
+              ? `text-ink ${isOpen ? "hover:bg-hover-2" : "bg-hover"}`
+              : "text-ink-2 hover:bg-hover-2 hover:text-ink"
+          }`}
+        >
+          <button
+            type="button"
+            onClick={() => void openProject(project)}
+            className="flex min-w-0 flex-1 items-center gap-2 py-2 pl-2 text-left"
+          >
+            <span className="grid size-6 shrink-0 place-items-center rounded-chip bg-field text-meta shadow-hairline">
+              {project.emoji ?? (project.name.trim().charAt(0).toUpperCase() || "•")}
+            </span>
+            <span className="min-w-0 flex-1 truncate">{project.name}</span>
+            {active && !isOpen && <RunDot />}
+            {project.unread_scheduled_count > 0 && (
+              <span
+                className="size-2 shrink-0 rounded-full bg-accent"
+                aria-label="Unread scheduled reports"
+              />
+            )}
+          </button>
+          {/* Hidden until hover on a desktop, always there on touch — a phone
+            * has no hover to reveal it with. */}
+          <div className="opacity-100 transition-opacity [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 [@media(hover:hover)]:has-[[aria-expanded=true]]:opacity-100 [@media(hover:hover)]:focus-within:opacity-100">
+            <Menu
+              label={`Manage ${project.name}`}
+              align="end"
+              trigger={<span aria-hidden className="text-ink-3">···</span>}
+            >
+              {(close) => (
+                <>
+                  <MenuItem
+                    icon={<IconPin size={14} />}
+                    label={project.pinned === 1 ? "Unpin" : "Pin to top"}
+                    onSelect={() => {
+                      close();
+                      void togglePin(project);
+                    }}
+                  />
+                  <MenuItem
+                    icon={<IconEdit size={14} />}
+                    label="Edit project"
+                    onSelect={() => {
+                      close();
+                      setEditing(project);
+                    }}
+                  />
+                </>
+              )}
+            </Menu>
+          </div>
+          <button
+            type="button"
+            onClick={() =>
+              setExpanded((current) => {
+                const next = new Set(current);
+                if (next.has(project.id)) next.delete(project.id);
+                else next.add(project.id);
+                return next;
+              })
+            }
+            aria-label={`${isOpen ? "Collapse" : "Expand"} ${project.name}`}
+            aria-expanded={isOpen}
+            disabled={needle.length > 0}
+            className="grid size-9 shrink-0 place-items-center text-ink-3 hover:text-ink"
+          >
+            <span
+              aria-hidden
+              className="transition-transform duration-150"
+              style={{ transform: isOpen ? "rotate(90deg)" : undefined }}
+            >
+              <IconChevronRight size={13} />
+            </span>
+          </button>
+        </div>
+        {isOpen && (
+          <ul className="mt-0.5 mb-1">
+            {roots.length === 0 && (
+              <li className="py-1.5 pl-10 text-meta text-ink-3">No chats yet</li>
+            )}
+            {roots.map((session) => (
+              <SessionBranch
+                key={session.session_id}
+                session={session}
+                childrenByParent={children}
+                activeSessionId={activeSessionId}
+                onSelect={select}
+                onRename={rename}
+                onDelete={remove}
+                unreadScheduledCount={project.unread_scheduled_count}
+              />
+            ))}
+          </ul>
+        )}
+      </li>
+    );
+  };
+
+  const sectionLabel = (text: string) => (
+    <li className="px-2 pt-3 pb-1 text-micro font-semibold tracking-[0.06em] text-ink-3 uppercase first:pt-1">
+      {text}
+    </li>
+  );
+
   const content = (
     <aside className="pt-safe pb-safe flex h-full w-[280px] shrink-0 flex-col border-r border-line bg-page">
-      <div className="flex h-14 items-center justify-between px-4">
-        <span className="text-ui font-semibold text-ink">Hermes</span>
+      <div className="flex h-14 items-center justify-between pr-2 pl-4">
+        <span className="text-ui font-semibold text-ink">{APP_NAME}</span>
         <button
           type="button"
           onClick={onNewProject}
           aria-label="New project"
-          className="tap-target grid size-9 place-items-center rounded-control text-ink-2 hover:bg-hover"
+          title="New project"
+          className="tap-target grid size-9 place-items-center rounded-control text-ink-2 hover:bg-hover-2 hover:text-ink"
         >
           <IconPlus size={17} />
         </button>
       </div>
+      {showFilter && (
+        <div className="px-2 pb-2">
+          <input
+            data-sidebar-filter
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") {
+                setQuery("");
+                event.currentTarget.blur();
+              }
+            }}
+            placeholder="Filter projects and chats"
+            aria-label="Filter projects and chats"
+            // 16px on touch, or iOS zooms the viewport on focus
+            className="h-8 w-full rounded-control border border-line bg-field px-2.5 text-input text-ink
+              outline-none placeholder:text-ink-3 focus:border-line-strong [@media(pointer:fine)]:text-label"
+          />
+        </div>
+      )}
       <nav aria-label="Projects and sessions" className="scroll-area min-h-0 flex-1 overflow-y-auto px-2 pb-3">
-        <ul className="space-y-1">
-          {projects.map((project) => {
-            const projectSessions = sessionsByProject.get(project.id) ?? [];
-            const roots = projectSessions.filter((session) => !session.parent_session_id);
-            const children = new Map<string | null, ProjectSession[]>();
-            for (const session of projectSessions) {
-              const rows = children.get(session.parent_session_id) ?? [];
-              rows.push(session);
-              children.set(session.parent_session_id, rows);
-            }
-            const isOpen = expanded.has(project.id);
-            return (
-              <li key={project.id}>
-                <div
-                  className={`flex min-h-10 w-full items-center rounded-control text-label font-medium ${
-                    project.id === activeProjectId
-                      ? "text-ink"
-                      : "text-ink-2 hover:bg-hover-2"
-                  }`}
-                >
-                  <button
-                    type="button"
-                    onClick={() => void openProject(project)}
-                    className="flex min-w-0 flex-1 items-center gap-2 px-2 py-2 text-left"
-                  >
-                    <span className="grid size-6 place-items-center">
-                      {project.emoji ?? project.name.trim().charAt(0).toUpperCase() ?? "•"}
-                    </span>
-                    <span className="min-w-0 flex-1 truncate">{project.name}</span>
-                    {project.unread_scheduled_count > 0 && (
-                      <span
-                        className="size-2 rounded-full bg-accent"
-                        aria-label="Unread scheduled reports"
-                      />
-                    )}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setExpanded((current) => {
-                        const next = new Set(current);
-                        if (next.has(project.id)) next.delete(project.id);
-                        else next.add(project.id);
-                        return next;
-                      })
-                    }
-                    aria-label={`${isOpen ? "Collapse" : "Expand"} ${project.name}`}
-                    aria-expanded={isOpen}
-                    className="grid size-9 shrink-0 place-items-center text-ink-3"
-                  >
-                    <span
-                      aria-hidden
-                      className="transition-transform"
-                      style={{ transform: isOpen ? "rotate(90deg)" : undefined }}
-                    >
-                      <IconChevronRight size={13} />
-                    </span>
-                  </button>
-                </div>
-                {isOpen && (
-                  <ul className="mt-0.5">
-                    {roots.map((session) => (
-                      <SessionBranch
-                        key={session.session_id}
-                        session={session}
-                        childrenByParent={children}
-                        activeSessionId={activeSessionId}
-                        onSelect={select}
-                        onRename={rename}
-                        onDelete={remove}
-                        unreadScheduledCount={project.unread_scheduled_count}
-                      />
-                    ))}
-                  </ul>
-                )}
-              </li>
-            );
-          })}
+        <ul className="space-y-0.5">
+          {anyPinned && !needle && sectionLabel("Pinned")}
+          {visible.filter(({ project }) => anyPinned && !needle && project.pinned === 1).map(renderProject)}
+          {anyPinned &&
+            !needle &&
+            visible.some(({ project }) => project.pinned !== 1) &&
+            sectionLabel("Projects")}
+          {visible.filter(({ project }) => !(anyPinned && !needle && project.pinned === 1)).map(renderProject)}
         </ul>
+        {needle && visible.length === 0 && (
+          <p className="px-2 py-6 text-center text-meta text-ink-3">
+            Nothing matches &ldquo;{query.trim()}&rdquo;.
+          </p>
+        )}
       </nav>
-      <div className="border-t border-line px-3 pt-3 text-meta text-ink-3">
-        Search, jobs and settings are available from the header menu.
+      <div className="flex items-center gap-1 border-t border-line px-2 py-2">
+        <button
+          type="button"
+          onClick={() => {
+            onClose();
+            openSearch();
+          }}
+          className="flex h-9 flex-1 items-center gap-2 rounded-control px-2 text-label font-medium text-ink-2
+            transition-colors hover:bg-hover-2 hover:text-ink"
+        >
+          <IconSearch size={14} className="text-ink-3" />
+          Search
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            onClose();
+            router.push("/settings");
+          }}
+          className="flex h-9 flex-1 items-center gap-2 rounded-control px-2 text-label font-medium text-ink-2
+            transition-colors hover:bg-hover-2 hover:text-ink"
+        >
+          <IconSettings size={14} className="text-ink-3" />
+          Settings
+        </button>
       </div>
     </aside>
   );
@@ -392,9 +564,23 @@ export function ProjectSidebar({
             aria-label="Close sidebar"
             onClick={onClose}
             className="absolute inset-0 bg-scrim"
+            style={{ animation: "fade-in var(--duration-quick) ease-out both" }}
           />
-          <div className="relative h-full shadow-overlay">{content}</div>
+          <div
+            className="relative h-full shadow-overlay"
+            style={{ animation: "panel-in-right var(--duration-fast) var(--ease-smooth-out) both" }}
+          >
+            {content}
+          </div>
         </div>
+      )}
+      {editing && (
+        <ProjectSettingsSheet
+          project={editing}
+          sessionId={editing.id === activeProjectId ? activeSessionId : undefined}
+          open
+          onClose={() => setEditing(null)}
+        />
       )}
     </>
   );

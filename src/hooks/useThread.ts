@@ -11,7 +11,7 @@ import type {
   ThreadMessage,
   ToolCall,
 } from "@/lib/chat-types";
-import { isMessageContentFormat } from "@/lib/chat-types";
+import { toThreadMessages, type RawThreadMessage } from "@/lib/thread-messages";
 
 /* Everything the thread UI needs, derived from our replayable SSE stream.
  * The components downstream are presentational — no scripted timers, no
@@ -140,36 +140,8 @@ export function useThread(
       `/api/projects/${projectId}/sessions/${sessionId}/messages?limit=500`,
     );
     if (!res.ok) return;
-    const body = (await res.json()) as {
-      messages: {
-        id?: string;
-        role: string;
-        content?: unknown;
-        content_format?: unknown;
-        cron?: ThreadMessage["cron"];
-      }[];
-    };
-    setMessages(
-      body.messages
-        .filter(
-          (m) =>
-            typeof m.content === "string" &&
-            m.content.length > 0 &&
-            isMessageContentFormat(m.content_format) &&
-            (m.role === "user" ||
-              m.role === "assistant" ||
-              m.role === "system" ||
-              m.role === "cron"),
-        )
-        .map((m, i) => ({
-          id: m.id ?? `msg_${i}`,
-          role: m.role as ThreadMessage["role"],
-          content: m.content as string,
-          contentFormat: m.content_format as ThreadMessage["contentFormat"],
-          // Only cron messages carry it; the route omits the key otherwise.
-          ...(m.cron ? { cron: m.cron } : {}),
-        })),
-    );
+    const body = (await res.json()) as { messages: RawThreadMessage[] };
+    setMessages(toThreadMessages(body.messages));
   }, [projectId, sessionId]);
 
   const startNewRun = useCallback((id: string) => {

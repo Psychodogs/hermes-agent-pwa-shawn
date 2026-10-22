@@ -8,7 +8,7 @@ import type {
   ProjectSession,
   ThreadMessage,
 } from "@/lib/chat-types";
-import { isMessageContentFormat } from "@/lib/chat-types";
+import { toThreadMessages, type RawThreadMessage } from "@/lib/thread-messages";
 import { withProjectNavigation } from "@/lib/project-sessions";
 
 export const dynamic = "force-dynamic";
@@ -49,27 +49,7 @@ export default async function SessionPage({
   let initialMessages: ThreadMessage[] = [];
   try {
     const messages = (await messagesForSession(id, sessionId)) ?? [];
-    initialMessages = (messages as {
-      id?: string;
-      role?: string;
-      content?: unknown;
-      content_format?: unknown;
-      cron?: ThreadMessage["cron"];
-    }[])
-      .filter(
-        (message) =>
-          typeof message.content === "string" &&
-          message.content.length > 0 &&
-          isMessageContentFormat(message.content_format) &&
-          ["user", "assistant", "system", "cron"].includes(message.role ?? ""),
-      )
-      .map((message, index) => ({
-        id: message.id ?? `msg_${index}`,
-        role: message.role as ThreadMessage["role"],
-        content: message.content as string,
-        contentFormat: message.content_format as ThreadMessage["contentFormat"],
-        ...(message.cron ? { cron: message.cron } : {}),
-      }));
+    initialMessages = toThreadMessages(messages as RawThreadMessage[]);
   } catch {
     // Cached/live streaming UI can recover when Hermes comes back.
   }

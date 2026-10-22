@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useThread } from "@/hooks/useThread";
 import {
@@ -17,6 +17,13 @@ import { SubagentCards } from "@/components/chat/SubagentCard";
 import { ApprovalCard } from "@/components/chat/ApprovalCard";
 import { QueuedRows } from "@/components/chat/QueuedRows";
 import { RunStatusLine } from "@/components/chat/RunStatusLine";
+import {
+  DaySeparator,
+  MessageActions,
+  startsNewDay,
+  useHydrated,
+} from "@/components/chat/MessageActions";
+import { useShortcuts } from "@/hooks/useShortcuts";
 import { Composer } from "@/components/chat/Composer";
 import { ModelPicker } from "@/components/chat/ModelPicker";
 import {
@@ -34,7 +41,7 @@ import { useAppActions } from "@/components/AppActionsContext";
 import { usePreferences } from "@/components/PreferencesContext";
 import { useStatus } from "@/hooks/useStatus";
 import { useModels } from "@/hooks/useModels";
-import { IconChevronDown, IconRetry } from "@/components/primitives/icons";
+import { IconChevronDown } from "@/components/primitives/icons";
 import type { SlashCommand } from "@/lib/commands";
 import type {
   Attachment,
@@ -97,6 +104,13 @@ export function ChatThread({
   const [toolsetsOpen, setToolsetsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [scheduledSending, setScheduledSending] = useState(false);
+  /** text pushed into the composer — "edit and resend", or a starter prompt */
+  const [seed, setSeed] = useState<{ text: string; nonce: number }>();
+  const seedComposer = useCallback(
+    (text: string) => setSeed((current) => ({ text, nonce: (current?.nonce ?? 0) + 1 })),
+    [],
+  );
+  const hydrated = useHydrated();
   const readThroughRef = useRef<string | null>(null);
   // Optimistic: the picker has to feel instant, and the row is written behind
   // it. A failed PATCH is reported by the toast, not by a reverting chip.
@@ -118,6 +132,15 @@ export function ChatThread({
   // mirrored into state purely to drive the jump-to-latest button; the ref is
   // what the scroll effect reads, so the render is never in the hot path
   const [pinned, setPinned] = useState(true);
+  /* What the thread looked like when the reader scrolled away, so the
+   * jump-to-latest button can say whether anything has arrived since. */
+  const contentSignature = `${messages.length}:${streaming.length}:${tools.length}:${queued.length}`;
+  const signatureRef = useRef(contentSignature);
+  useEffect(() => {
+    signatureRef.current = contentSignature;
+  });
+  const [leftAt, setLeftAt] = useState(contentSignature);
+  const unseen = !pinned && leftAt !== contentSignature;
 
   // Only auto-scroll when the reader is already at the bottom — yanking the
   // viewport while they're reading back through the thread is worse than a
@@ -126,6 +149,7 @@ export function ChatThread({
     const el = scrollRef.current;
     if (!el) return;
     const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+    if (pinnedRef.current && !atBottom) setLeftAt(signatureRef.current);
     pinnedRef.current = atBottom;
     setPinned(atBottom);
   }, []);
@@ -137,6 +161,16 @@ export function ChatThread({
     setPinned(true);
     bottomRef.current?.scrollIntoView({ behavior: scrollBehavior, block: "end" });
   }, [scrollBehavior]);
+
+  /* Open at the newest message, instantly — and again once day separators
+   * and times appear after hydration, which grows the thread under a reader
+   * who hasn't moved. A smooth scroll here would animate past the whole
+   * history on every visit. */
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (!el || !pinnedRef.current) return;
+    el.scrollTop = el.scrollHeight;
+  }, [hydrated]);
 
   useEffect(() => {
     // "Follow the reply" off means the view only moves when you move it — the
@@ -157,6 +191,31 @@ export function ChatThread({
 
   const running = phase !== "idle";
   const stopping = phase === "stopping";
+
+  useShortcuts([
+    { key: ".", mod: true, when: running && !stopping && !scheduled, run: () => void stop() },
+  ]);
+
+  // Oldest first, for the composer's ↑ recall.
+  const promptHistory = useMemo(
+    () => messages.filter((m) => m.role === "user" && m.content.trim()).map((m) => m.content),
+    [messages],
+  );
+  const lastUserIndex = messages.findLastIndex((m) => m.role === "user");
+
+  /* Which messages open a new calendar day. Client-only: "today" depends on
+   * the reader's timezone, which the server render can't know. */
+  const newDayIds = useMemo(() => {
+    const ids = new Set<string>();
+    if (!hydrated) return ids;
+    let previous: number | undefined;
+    for (const message of messages) {
+      if (!message.createdAt) continue;
+      if (startsNewDay(message.createdAt, previous)) ids.add(message.id);
+      previous = message.createdAt;
+    }
+    return ids;
+  }, [hydrated, messages]);
   const latestScheduled = messages.findLast((message) => message.role === "cron");
 
   const markScheduledRead = useCallback(async () => {
@@ -373,57 +432,89 @@ export function ChatThread({
             ? "Running tools"
             : "Working";
 
-  const renderMessages = (slice: ThreadMessage[], offset: number) =>
-    slice.map((message, i) => {
-      const isLast = offset + i === messages.length - 1;
-      return message.role === "user" ? (
+  const renderMessage = (message: ThreadMessage, index: number) => {
+    const isLast = index === messages.length - 1;
+    if (message.role === "user") {
+      return (
         <UserMessage
           key={message.id}
           content={message.content}
           attachments={message.attachments}
+          footer={
+            <MessageActions
+              content={message.content}
+              createdAt={message.createdAt}
+              align="end"
+              // Hermes has no edit endpoint, so this starts a new prompt from
+              // the old one rather than rewriting history.
+              onEdit={
+                !scheduled && index === lastUserIndex
+                  ? () => seedComposer(message.content)
+                  : undefined
+              }
+            />
+          }
         />
-      ) : message.role === "system" ? (
-        <SystemMessage key={message.id} content={message.content} />
-      ) : message.role === "cron" && message.cron ? (
+      );
+    }
+    if (message.role === "system") {
+      return <SystemMessage key={message.id} content={message.content} />;
+    }
+    if (message.role === "cron" && message.cron) {
+      return (
         <CronMessage
           key={message.id}
           content={message.content}
           meta={message.cron}
           markdown={message.contentFormat === "markdown"}
-        />
-      ) : (
-        <AssistantMessage
-          key={message.id}
-          content={message.content}
-          markdown={message.contentFormat === "markdown"}
-          // A recommendation is a question about what to do next, so only the
-          // newest one is still answerable; older cards render inert.
-          onRecommendationAction={
-            isLast && !running ? (reply) => void thread.send(reply) : undefined
-          }
-          hoistQuestions={isLast && pinnedQuestion !== null}
-          // the last settled turn carries the retry affordance — steering only
-          // works mid-run, so re-running is the redo once it's over. Not while
-          // a question is pinned: answering it is the action, and a Retry row
-          // between the card and the composer is exactly the gap that made
-          // the decision feel unmoored from the input.
-          footer={
-            !running && isLast && !pinnedQuestion ? (
-              <button
-                type="button"
-                onClick={retry}
-                className="-mx-1.5 mt-1 flex h-7 w-fit items-center gap-1.5 rounded-chip px-1.5
-                  text-label font-medium text-ink-3 transition-colors duration-100
-                  hover:bg-hover-2 hover:text-ink-2 active:scale-[0.97]"
-              >
-                <IconRetry size={13} />
-                Retry
-              </button>
-            ) : null
-          }
+          footer={<MessageActions content={message.content} createdAt={message.createdAt} />}
         />
       );
+    }
+    const settledLast = !running && isLast;
+    return (
+      <AssistantMessage
+        key={message.id}
+        content={message.content}
+        markdown={message.contentFormat === "markdown"}
+        // A recommendation is a question about what to do next, so only the
+        // newest one is still answerable; older cards render inert.
+        onRecommendationAction={
+          settledLast ? (reply) => void thread.send(reply) : undefined
+        }
+        hoistQuestions={isLast && pinnedQuestion !== null}
+        footer={
+          <MessageActions
+            content={message.content}
+            createdAt={message.createdAt}
+            persistent={settledLast}
+            // the last settled turn carries the retry affordance — steering
+            // only works mid-run, so re-running is the redo once it's over.
+            // Not while a question is pinned: answering it is the action, and
+            // a Retry row between the card and the composer is exactly the
+            // gap that made the decision feel unmoored from the input.
+            onRetry={settledLast && !pinnedQuestion ? retry : undefined}
+          />
+        }
+      />
+    );
+  };
+
+  const renderMessages = (slice: ThreadMessage[], offset: number) =>
+    slice.flatMap((message, i) => {
+      const node = renderMessage(message, offset + i);
+      return newDayIds.has(message.id) && message.createdAt
+        ? [<DaySeparator key={`day-${message.id}`} ts={message.createdAt} />, node]
+        : [node];
     });
+
+  // Something to tap instead of a blank page. These fill the composer rather
+  // than send — a starter is a suggestion, not a commitment to spend a turn.
+  const starters = [
+    `Let's pick up ${project.name}. What do you need from me?`,
+    "What can you do in this project?",
+    "Help me plan the next step.",
+  ];
 
   return (
     <>
@@ -437,11 +528,32 @@ export function ChatThread({
       >
         <div className="px-safe mx-auto flex w-full max-w-3xl flex-col gap-5 pt-4 pb-2">
           {messages.length === 0 && !running && (
-            <p className="py-10 text-center text-label text-ink-3">
-              {scheduled
-                ? "Scheduled reports for this project will appear here."
-                : "Nothing here yet. This thread stays put — come back to it whenever."}
-            </p>
+            <div
+              className="flex flex-col items-center gap-4 py-12 text-center"
+              style={{ animation: "fade-up var(--duration-slow) var(--ease-out-strong) both" }}
+            >
+              <p className="max-w-xs text-label text-ink-3">
+                {scheduled
+                  ? "Scheduled reports for this project will appear here."
+                  : "Nothing here yet. This thread stays put — come back to it whenever."}
+              </p>
+              {!scheduled && (
+                <div className="flex w-full max-w-sm flex-col gap-1.5">
+                  {starters.map((starter) => (
+                    <button
+                      key={starter}
+                      type="button"
+                      onClick={() => seedComposer(starter)}
+                      className="rounded-card bg-surface px-3.5 py-2.5 text-left text-label text-ink-2
+                        shadow-card transition-[color,transform] duration-150 hover:text-ink
+                        active:scale-[0.98]"
+                    >
+                      {starter}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
 
           {renderMessages(messages.slice(0, splitAt), 0)}
@@ -487,11 +599,11 @@ export function ChatThread({
       <div className="px-safe pointer-events-none relative z-20 mx-auto w-full max-w-3xl">
         <button
           type="button"
-          aria-label="Jump to latest"
+          aria-label={unseen ? "Jump to latest — new activity" : "Jump to latest"}
           aria-hidden={pinned}
           tabIndex={pinned ? -1 : 0}
           onClick={jumpToLatest}
-          className={`absolute right-0 bottom-2 flex size-9 items-center justify-center
+          className={`absolute right-1 bottom-2 flex size-9 items-center justify-center
             rounded-full bg-surface text-ink-2 shadow-raised transition-[opacity,transform]
             duration-200 active:scale-[0.94] ${
               pinned
@@ -500,6 +612,14 @@ export function ChatThread({
             }`}
         >
           <IconChevronDown size={16} />
+          {/* something arrived while the reader was scrolled away */}
+          {unseen && (
+            <span
+              aria-hidden
+              className="absolute top-0.5 right-0.5 size-2 rounded-full bg-ink ring-2 ring-surface"
+              style={{ animation: "pop-in var(--duration-fast) var(--ease-out-strong) both" }}
+            />
+          )}
         </button>
       </div>
 
@@ -542,6 +662,9 @@ export function ChatThread({
 
       <Composer
         projectId={projectId}
+        draftId={scheduled ? undefined : session.session_id}
+        history={scheduled ? undefined : promptHistory}
+        seed={seed}
         onSend={scheduled ? replyToScheduled : thread.send}
         onStop={stop}
         onCommand={(command, rest) => void onCommand(command, rest)}
