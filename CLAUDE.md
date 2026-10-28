@@ -233,6 +233,21 @@ correct and stable under the keyboard; the guards in the script — never shrink
 while an editable element has focus, never shrink by a keyboard-sized fraction
 — are for the iOS builds that shrink it anyway.
 
+A third build gets it short instead. WebKit 301994, as it shows on iOS 26.5, gives a
+Home Screen app a web view that stops 62pt above the bottom of an 874pt
+screen: `innerHeight`, `100dvh` and `clientHeight` all read 812, and the
+system paints the strip below itself — no element reaches it, so the shell
+must **not** be stretched to `screen.height` (that is the composer-below-the-
+edge bug again). What the same script does instead is measure
+`--viewport-shortfall` and subtract it from the bottom inset: the short web
+view never reaches the home indicator, so `env(safe-area-inset-bottom)`'s
+34pt was dead space stacked on the system's strip. Every bottom-anchored
+surface reads `--safe-bottom` (via `pb-safe`), never `env()` directly. The
+shortfall is 0 unless the app is standalone, portrait, full-width, short by
+no more than a status bar, *and* has a positive top inset — the 26.1 form of
+the same bug went opaque with a 0 inset and lost its height at the top, where
+the bottom padding is still needed.
+
 The same iOS 26 release drifts `fixed`/`sticky` boxes off their computed
 position, which is why the composer is plain `relative` — the `sticky bottom-0`
 it used to carry was already a no-op inside a non-scrolling flex column, so it

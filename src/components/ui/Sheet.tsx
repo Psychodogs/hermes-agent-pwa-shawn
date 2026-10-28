@@ -58,7 +58,7 @@ export function Sheet({
           // both insets — without the top one the workspace row sits under
           // the status bar
           paddingTop: "env(safe-area-inset-top)",
-          paddingBottom: "max(8px, env(safe-area-inset-bottom))",
+          paddingBottom: "max(8px, var(--safe-bottom))",
           paddingLeft: "env(safe-area-inset-left)",
         }}
       >

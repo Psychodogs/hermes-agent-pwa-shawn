@@ -136,7 +136,7 @@ function NewProjectForm({
         className="relative w-full max-w-md overflow-hidden rounded-[20px] bg-surface shadow-overlay"
         style={{
           animation: "pop-in var(--duration-fast) var(--ease-out-strong) both",
-          marginBottom: "max(0px, calc(env(safe-area-inset-bottom) - 4px))",
+          marginBottom: "max(0px, calc(var(--safe-bottom) - 4px))",
         }}
       >
         {/* The form outgrew a phone viewport once skills were added — scroll the

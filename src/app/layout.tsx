@@ -55,9 +55,44 @@ if(p.reduceMotion===true||matchMedia("(prefers-reduced-motion: reduce)").matches
  * pan is what puts the composer above the keys. Sizing the shell from the
  * visual viewport undoes that. The guards are for the iOS builds that shrink
  * innerHeight for the keyboard anyway: never shrink while an editable element
- * has focus, and never shrink by a keyboard-sized fraction at all. */
+ * has focus, and never shrink by a keyboard-sized fraction at all.
+ *
+ * It also measures `--viewport-shortfall`, for WebKit 301994 as it shows on
+ * iOS 26.5: a Home Screen app whose web view stops short of the screen. The
+ * status bar still overlays the page (so the top inset is real), but
+ * innerHeight, 100dvh and clientHeight all read 812 on an 874pt screen, and
+ * the system paints the 62pt below the web view itself — no element can reach
+ * it, so the shell must not be stretched into it. What can be fixed is our
+ * own padding: env(safe-area-inset-bottom) still reports the home indicator,
+ * which that short web view never reaches, so the composer sat 34pt higher
+ * than it needed to on top of the system's strip. --safe-bottom in
+ * globals.css subtracts the shortfall.
+ *
+ * Measured, never assumed — the shortfall is 0 unless every condition holds:
+ * standalone, portrait and full-width (the only case where `screen` describes
+ * the window; iPad windows and landscape are excluded), a gap no larger than
+ * a status bar (a keyboard is not a shortfall), and a positive top inset. The
+ * last one tells the two regressions apart: on 26.1 the bar went opaque with a
+ * 0 inset and the missing height was at the *top*, where the bottom padding
+ * is still needed. Re-checked after load, because insets can settle late on a
+ * cold launch. */
 const APP_HEIGHT = `(function(){try{
 var d=document.documentElement,full=0;
+function topInset(){
+var p=d.style.paddingTop;
+d.style.paddingTop="env(safe-area-inset-top)";
+var t=parseFloat(getComputedStyle(d).paddingTop)||0;
+d.style.paddingTop=p;
+return t;
+}
+function shortfall(){
+if(!(navigator.standalone===true||matchMedia("(display-mode: standalone)").matches))return 0;
+var s=screen.height;
+if(s<=screen.width||Math.abs(innerWidth-screen.width)>1)return 0;
+var g=s-full;
+if(g<=0||g>120)return 0;
+return topInset()>0?g:0;
+}
 function set(){
 var h=window.innerHeight;
 if(!h)return;
@@ -68,11 +103,14 @@ if(h<full*0.75)return;
 }
 full=h;
 d.style.setProperty("--app-height",h+"px");
+d.style.setProperty("--viewport-shortfall",shortfall()+"px");
 }
 set();
 addEventListener("resize",set);
 addEventListener("pageshow",set);
 addEventListener("orientationchange",function(){full=0;setTimeout(set,120)});
+setTimeout(set,250);
+setTimeout(set,1000);
 }catch(e){}})()`;
 
 // themeColor lives here, not in metadata — it's deprecated there in Next 16.
