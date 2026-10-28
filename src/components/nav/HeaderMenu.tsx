@@ -6,6 +6,7 @@ import { Menu, MenuItem, MenuSeparator } from "@/components/ui/Menu";
 import {
   IconEdit,
   IconKeyboard,
+  IconMore,
   IconSearch,
   IconSettings,
 } from "@/components/primitives/icons";
@@ -39,12 +40,12 @@ export function HeaderMenu({
 
   return (
     <>
-      <Menu label="Menu" align="end" trigger={<IconSettings size={17} />}>
+      <Menu label="Menu" align="end" triggerSize="lg" trigger={<IconMore size={20} />}>
         {(close) => (
           <>
             {project && (
               <MenuItem
-                icon={<IconEdit size={14} />}
+                icon={<IconEdit size={16} />}
                 label="Edit project"
                 onSelect={() => {
                   close();
@@ -54,7 +55,7 @@ export function HeaderMenu({
             )}
             {onSearch && (
               <MenuItem
-                icon={<IconSearch size={14} />}
+                icon={<IconSearch size={16} />}
                 label="Search"
                 hint={mod ? `${mod}K` : undefined}
                 onSelect={() => {
@@ -65,7 +66,7 @@ export function HeaderMenu({
             )}
             {onShortcuts && mod && (
               <MenuItem
-                icon={<IconKeyboard size={14} />}
+                icon={<IconKeyboard size={16} />}
                 label="Keyboard shortcuts"
                 hint="?"
                 onSelect={() => {
@@ -76,7 +77,7 @@ export function HeaderMenu({
             )}
             {(project || onSearch) && <MenuSeparator />}
             <MenuItem
-              icon={<IconSettings size={14} />}
+              icon={<IconSettings size={16} />}
               label="Settings"
               onSelect={() => {
                 close();

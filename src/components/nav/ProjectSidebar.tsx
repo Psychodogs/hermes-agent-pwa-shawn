@@ -3,8 +3,11 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  IconBranch,
   IconChevronRight,
+  IconClock,
   IconEdit,
+  IconMore,
   IconPin,
   IconPlus,
   IconSearch,
@@ -14,11 +17,15 @@ import {
 import { Menu, MenuItem } from "@/components/ui/Menu";
 import { RunDot } from "@/components/chat/RunDot";
 import { useAppActions } from "@/components/AppActionsContext";
-import { useShortcuts } from "@/hooks/useShortcuts";
+import { useKeyboardMod, useShortcuts } from "@/hooks/useShortcuts";
 import { APP_NAME } from "@/lib/branding";
 import { ProjectSettingsSheet } from "./ProjectSettings";
 import type { Project, ProjectSession } from "@/lib/chat-types";
 import { sessionsRecentFirst } from "@/lib/session-order";
+
+/* The sidebar's own action rows — New project, Search, Settings. */
+const sidebarRow =
+  "flex h-9 w-full items-center gap-2.5 rounded-control px-2.5 text-left text-ui text-ink transition-[background-color,transform] duration-150 hover:bg-hover active:scale-[0.98]";
 
 function SessionBranch({
   session,
@@ -77,10 +84,11 @@ function SessionBranch({
   return (
     <li>
       <div
-        className={`flex min-h-9 w-full items-center rounded-control text-label transition-colors ${
-          active ? "bg-hover text-ink" : "text-ink-2 hover:bg-hover-2 hover:text-ink"
+        className={`flex min-h-9 w-full items-center rounded-control text-ui transition-colors duration-150 ${
+          active ? "bg-hover-2 text-ink" : "text-ink-2 hover:bg-hover hover:text-ink"
         }`}
-        style={{ paddingLeft: `${20 + depth * 16}px` }}
+        // indented to the project name above it, then a step per branch level
+        style={{ paddingLeft: `${12 + depth * 16}px` }}
       >
         {mode === "rename" ? (
           <form
@@ -90,7 +98,9 @@ function SessionBranch({
               void submitRename();
             }}
           >
-            <span aria-hidden className="text-ink-3">{depth > 0 ? "└" : "•"}</span>
+            <span aria-hidden className="flex size-6 shrink-0 items-center justify-center text-ink-3">
+              {depth > 0 && <IconBranch size={14} />}
+            </span>
             <input
               autoFocus
               onFocus={(event) => event.currentTarget.select()}
@@ -105,8 +115,9 @@ function SessionBranch({
                 }
               }}
               aria-label="Chat title"
-              className="h-7 min-w-0 flex-1 rounded-control border border-line-strong bg-field px-2
-                text-label text-ink outline-none focus:border-ink-3"
+              className="h-7 min-w-0 flex-1 rounded-[8px] bg-page px-2 text-input text-ink
+                shadow-[inset_0_0_0_1px_var(--line-strong)] outline-none focus:shadow-[inset_0_0_0_1px_var(--ink-3)]
+                [@media(pointer:fine)]:text-ui"
             />
           </form>
         ) : (
@@ -116,20 +127,24 @@ function SessionBranch({
             aria-current={active ? "page" : undefined}
             className="flex min-w-0 flex-1 items-center gap-2 py-2 text-left"
           >
-            <span aria-hidden className="text-ink-3">
-              {session.kind === "scheduled" ? "◷" : depth > 0 ? "└" : "•"}
+            <span aria-hidden className="flex size-6 shrink-0 items-center justify-center text-ink-3">
+              {session.kind === "scheduled" ? (
+                <IconClock size={14} />
+              ) : depth > 0 ? (
+                <IconBranch size={14} />
+              ) : null}
             </span>
             <span className="min-w-0 flex-1 truncate">{session.title}</span>
             {active && <RunDot />}
             {session.kind === "scheduled" && unreadScheduledCount > 0 && (
-              <span className="rounded-chip bg-accent-tint px-1.5 text-meta text-ink">
+              <span className="min-w-5 rounded-full bg-accent-tint px-1.5 text-center text-meta font-medium text-ink tabular-nums">
                 {unreadScheduledCount}
               </span>
             )}
           </button>
         )}
         {active && session.kind !== "scheduled" && mode === "idle" && (
-          <Menu label={`Manage ${session.title}`} align="end" trigger={<span aria-hidden>···</span>}>
+          <Menu label={`Manage ${session.title}`} align="end" trigger={<IconMore size={16} />}>
             {(close) => (
               <>
                 <MenuItem
@@ -231,6 +246,8 @@ export function ProjectSidebar({
 }) {
   const router = useRouter();
   const { openSearch } = useAppActions();
+  // shortcut hint on the Search row, only where there is a keyboard
+  const mod = useKeyboardMod();
   const [expanded, setExpanded] = useState<Set<string>>(
     () => new Set(activeProjectId ? [activeProjectId] : []),
   );
@@ -366,20 +383,20 @@ export function ProjectSidebar({
     return (
       <li key={project.id}>
         <div
-          className={`group flex min-h-10 w-full items-center rounded-control text-label font-medium transition-colors ${
+          className={`group flex min-h-9 w-full items-center rounded-control text-ui transition-colors duration-150 ${
             // Open, the active chat row below carries the highlight; drawing
             // both would make two rows look selected.
             active
-              ? `text-ink ${isOpen ? "hover:bg-hover-2" : "bg-hover"}`
-              : "text-ink-2 hover:bg-hover-2 hover:text-ink"
+              ? `font-medium text-ink ${isOpen ? "hover:bg-hover" : "bg-hover-2"}`
+              : "text-ink-2 hover:bg-hover hover:text-ink"
           }`}
         >
           <button
             type="button"
             onClick={() => void openProject(project)}
-            className="flex min-w-0 flex-1 items-center gap-2 py-2 pl-2 text-left"
+            className="flex min-w-0 flex-1 items-center gap-2 py-1.5 pl-1.5 text-left"
           >
-            <span className="grid size-6 shrink-0 place-items-center rounded-chip bg-field text-meta shadow-hairline">
+            <span className="grid size-6 shrink-0 place-items-center rounded-[7px] bg-field text-meta font-medium text-ink-2">
               {project.emoji ?? (project.name.trim().charAt(0).toUpperCase() || "•")}
             </span>
             <span className="min-w-0 flex-1 truncate">{project.name}</span>
@@ -397,7 +414,7 @@ export function ProjectSidebar({
             <Menu
               label={`Manage ${project.name}`}
               align="end"
-              trigger={<span aria-hidden className="text-ink-3">···</span>}
+              trigger={<IconMore size={16} className="text-ink-3" />}
             >
               {(close) => (
                 <>
@@ -434,21 +451,21 @@ export function ProjectSidebar({
             aria-label={`${isOpen ? "Collapse" : "Expand"} ${project.name}`}
             aria-expanded={isOpen}
             disabled={needle.length > 0}
-            className="grid size-9 shrink-0 place-items-center text-ink-3 hover:text-ink"
+            className="grid size-8 shrink-0 place-items-center rounded-control text-ink-3 transition-colors duration-150 hover:text-ink"
           >
             <span
               aria-hidden
               className="transition-transform duration-150"
               style={{ transform: isOpen ? "rotate(90deg)" : undefined }}
             >
-              <IconChevronRight size={13} />
+              <IconChevronRight size={14} />
             </span>
           </button>
         </div>
         {isOpen && (
           <ul className="mt-0.5 mb-1">
             {roots.length === 0 && (
-              <li className="py-1.5 pl-10 text-meta text-ink-3">No chats yet</li>
+              <li className="py-1.5 pl-10 text-label text-ink-3">No chats yet</li>
             )}
             {roots.map((session) => (
               <SessionBranch
@@ -469,23 +486,39 @@ export function ProjectSidebar({
   };
 
   const sectionLabel = (text: string) => (
-    <li className="px-2 pt-3 pb-1 text-micro font-semibold tracking-[0.06em] text-ink-3 uppercase first:pt-1">
+    <li className="px-2.5 pt-5 pb-1.5 text-label font-medium text-ink-3 first:pt-1">
       {text}
     </li>
   );
 
   const content = (
-    <aside className="pt-safe pb-safe flex h-full w-[280px] shrink-0 flex-col border-r border-line bg-page">
-      <div className="flex h-14 items-center justify-between pr-2 pl-4">
-        <span className="text-ui font-semibold text-ink">{APP_NAME}</span>
+    <aside className="pt-safe pb-safe flex h-full w-[min(300px,84vw)] shrink-0 flex-col bg-canvas lg:w-[272px]">
+      <div className="flex h-13 items-center px-4">
+        <span className="text-title font-semibold text-ink">{APP_NAME}</span>
+      </div>
+      {/* The two things you start from, as rows at the top — the category's
+        * arrangement — rather than an icon in the header and a button at the
+        * foot. */}
+      <div className="flex flex-col gap-px px-2 pb-2">
         <button
           type="button"
           onClick={onNewProject}
-          aria-label="New project"
-          title="New project"
-          className="tap-target grid size-9 place-items-center rounded-control text-ink-2 hover:bg-hover-2 hover:text-ink"
+          className={sidebarRow}
         >
-          <IconPlus size={17} />
+          <IconPlus size={18} className="text-ink-2" />
+          <span className="flex-1">New project</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            onClose();
+            openSearch();
+          }}
+          className={sidebarRow}
+        >
+          <IconSearch size={18} className="text-ink-2" />
+          <span className="flex-1">Search</span>
+          {mod && <kbd className="font-sans text-meta text-ink-3 tabular-nums">{mod}K</kbd>}
         </button>
       </div>
       {showFilter && (
@@ -504,8 +537,9 @@ export function ProjectSidebar({
             placeholder="Filter projects and chats"
             aria-label="Filter projects and chats"
             // 16px on touch, or iOS zooms the viewport on focus
-            className="h-8 w-full rounded-control border border-line bg-field px-2.5 text-input text-ink
-              outline-none placeholder:text-ink-3 focus:border-line-strong [@media(pointer:fine)]:text-label"
+            className="h-9 w-full rounded-control bg-transparent px-3 text-input text-ink
+              shadow-[inset_0_0_0_1px_var(--line-strong)] outline-none placeholder:text-ink-3
+              focus:shadow-[inset_0_0_0_1px_var(--ink-3)] [@media(pointer:fine)]:text-ui"
           />
         </div>
       )}
@@ -520,35 +554,22 @@ export function ProjectSidebar({
           {visible.filter(({ project }) => !(anyPinned && !needle && project.pinned === 1)).map(renderProject)}
         </ul>
         {needle && visible.length === 0 && (
-          <p className="px-2 py-6 text-center text-meta text-ink-3">
+          <p className="px-2 py-6 text-center text-label text-ink-3">
             Nothing matches &ldquo;{query.trim()}&rdquo;.
           </p>
         )}
       </nav>
-      <div className="flex items-center gap-1 border-t border-line px-2 py-2">
-        <button
-          type="button"
-          onClick={() => {
-            onClose();
-            openSearch();
-          }}
-          className="flex h-9 flex-1 items-center gap-2 rounded-control px-2 text-label font-medium text-ink-2
-            transition-colors hover:bg-hover-2 hover:text-ink"
-        >
-          <IconSearch size={14} className="text-ink-3" />
-          Search
-        </button>
+      <div className="px-2 py-2">
         <button
           type="button"
           onClick={() => {
             onClose();
             router.push("/settings");
           }}
-          className="flex h-9 flex-1 items-center gap-2 rounded-control px-2 text-label font-medium text-ink-2
-            transition-colors hover:bg-hover-2 hover:text-ink"
+          className={sidebarRow}
         >
-          <IconSettings size={14} className="text-ink-3" />
-          Settings
+          <IconSettings size={18} className="text-ink-2" />
+          <span className="flex-1">Settings</span>
         </button>
       </div>
     </aside>
@@ -568,7 +589,7 @@ export function ProjectSidebar({
           />
           <div
             className="relative h-full shadow-overlay"
-            style={{ animation: "panel-in-right var(--duration-fast) var(--ease-smooth-out) both" }}
+            style={{ animation: "panel-in-right var(--duration-medium) var(--ease-drawer) both" }}
           >
             {content}
           </div>

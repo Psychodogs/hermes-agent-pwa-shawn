@@ -2,6 +2,7 @@
 
 import { Sheet } from "@/components/ui/Sheet";
 import { IconCheck, IconChip, IconCross } from "@/components/primitives/icons";
+import { ICON_BUTTON, buttonClass } from "@/components/ui/SettingsControls";
 import type { ModelsPayload, ModelProviderView } from "@/app/api/models/route";
 import type { ModelOptions, ModelSelection } from "@/lib/model-options";
 
@@ -56,22 +57,17 @@ export function ModelPicker({
 
   return (
     <Sheet open={open} onClose={onClose} label="Model">
-      <div className="flex items-center justify-between gap-2 px-3 py-2.5">
-        <span className="flex items-center gap-1.5 text-ui font-medium text-ink">
-          <IconChip size={14} className="text-ink-3" />
+      <div className="flex items-center justify-between gap-2 px-5 pt-5 pb-3">
+        <span className="flex items-center gap-2 text-title font-semibold text-ink">
+          <IconChip size={16} className="text-ink-2" />
           Model
         </span>
-        <button
-          type="button"
-          aria-label="Close"
-          onClick={onClose}
-          className="primitive-icon-button flex items-center justify-center text-ink-3 hover:bg-hover-2 hover:text-ink"
-        >
-          <IconCross size={14} />
+        <button type="button" aria-label="Close" onClick={onClose} className={`${ICON_BUTTON} -mr-2`}>
+          <IconCross size={16} />
         </button>
       </div>
 
-      <div className="flex flex-col gap-1 px-2 pb-3">
+      <div className="flex flex-col gap-0.5 px-3 pb-5">
         <Row
           title="Gateway default"
           subtitle={
@@ -88,27 +84,25 @@ export function ModelPicker({
             onSelect({ model: null, provider: null, modelOptions: selection.modelOptions })
           }
         />
-        <p className="px-2 pt-0.5 pb-1 text-meta leading-snug text-ink-3">
+        <p className="px-2.5 pt-1 pb-2 text-label leading-snug text-ink-3">
           Follows whatever Hermes is set to. Pin one below to keep this project
           on it even if the gateway changes.
         </p>
 
         {payload?.unavailable && (
-          <p className="px-2 py-3 text-meta leading-[1.5] text-ink-3">
+          <p className="px-2.5 py-3 text-label text-ink-3">
             Hermes didn&rsquo;t answer with its model inventory. The gateway
             default still works.
           </p>
         )}
         {!payload && (
-          <p className="px-2 py-3 text-meta text-ink-3">Loading models…</p>
+          <p className="px-2.5 py-3 text-label text-ink-3">Loading models…</p>
         )}
 
         {providers.map((provider) => (
-          <div key={provider.slug} className="mt-2">
-            <div className="flex items-baseline gap-1.5 px-2 pb-1">
-              <span className="text-meta font-semibold tracking-[0.06em] text-ink-3 uppercase">
-                {provider.name}
-              </span>
+          <div key={provider.slug} className="mt-3">
+            <div className="flex items-center gap-2 px-2.5 pb-1">
+              <span className="text-label text-ink-3">{provider.name}</span>
               {provider.isCurrent && (
                 <span className="rounded-chip bg-green-tint px-1.5 text-meta text-green">
                   active
@@ -116,7 +110,7 @@ export function ModelPicker({
               )}
             </div>
             {provider.warning && !provider.authenticated && (
-              <p className="px-2 pb-1 text-meta text-ink-3">{provider.warning}</p>
+              <p className="px-2.5 pb-1 text-label text-ink-3">{provider.warning}</p>
             )}
             {provider.models.map((model) => (
               <Row
@@ -157,8 +151,8 @@ export function ModelPicker({
         ))}
 
         {(caps.reasoning || caps.fast) && (
-          <div className="mt-3 border-t border-line pt-2">
-            <span className="px-2 text-meta font-semibold tracking-[0.06em] text-ink-3 uppercase">
+          <div className="mt-4 border-t border-line pt-3">
+            <span className="block px-2.5 pb-1 text-label text-ink-3">
               Options for {effectiveModel ?? "this project"}
             </span>
             {/* Thinking used to live here. It moved to the chip beside the
@@ -190,8 +184,7 @@ export function ModelPicker({
           type="button"
           onClick={onRefresh}
           disabled={refreshing}
-          className="mt-3 self-start rounded-control px-2 py-1 text-meta text-ink-3
-            transition-colors duration-100 enabled:hover:bg-hover-2 enabled:hover:text-ink-2 disabled:opacity-50"
+          className={`${buttonClass("secondary", "sm")} mt-4 self-start`}
         >
           {refreshing ? "Refreshing…" : "Refresh from Hermes"}
         </button>
@@ -223,13 +216,10 @@ function Row({
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className="flex w-full items-center gap-2 rounded-control px-2 py-1.5 text-left
-        transition-colors duration-100 enabled:hover:bg-hover-2 enabled:active:scale-[0.99]
-        disabled:cursor-default disabled:opacity-45"
+      className="flex min-h-11 w-full items-center gap-3 rounded-control px-2.5 py-2 text-left
+        transition-[transform,background-color] duration-150 enabled:hover:bg-hover enabled:active:scale-[0.99]
+        disabled:cursor-default disabled:opacity-40"
     >
-      <span className="flex size-4 shrink-0 items-center justify-center text-ink">
-        {selected && <IconCheck size={13} strokeWidth={2.6} />}
-      </span>
       <span className="min-w-0 flex-1">
         <span
           className={`block truncate text-ui text-ink ${mono ? "font-mono text-label" : ""}`}
@@ -237,7 +227,7 @@ function Row({
           {title}
         </span>
         {subtitle && (
-          <span className="block truncate text-meta text-ink-3">{subtitle}</span>
+          <span className="block truncate text-label text-ink-3">{subtitle}</span>
         )}
       </span>
       {badge && (
@@ -245,6 +235,9 @@ function Row({
           {badge}
         </span>
       )}
+      <span className="flex size-4 shrink-0 items-center justify-center text-ink">
+        {selected && <IconCheck size={16} strokeWidth={2.4} />}
+      </span>
     </button>
   );
 }

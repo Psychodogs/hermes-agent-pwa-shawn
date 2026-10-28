@@ -356,22 +356,20 @@ export function Composer({
   };
 
   return (
-    <div className="px-safe pb-safe relative z-20 shrink-0 bg-page pt-2">
+    <div className="px-safe pb-safe relative z-20 shrink-0 bg-page pt-1">
       {/* the thread ends flush against the bar; fade it into the page colour
        * over the last few pixels rather than cutting it off at a hard edge */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 bottom-full h-6"
+        className="pointer-events-none absolute inset-x-0 bottom-full h-8"
         style={{ background: "linear-gradient(to top, var(--page), transparent)" }}
       />
       <div
         // remounting on a new error restarts the shake — no state, and no
         // stale animation left running on the next render
         key={errorNonce}
-        className="relative isolate mx-auto flex w-full max-w-3xl flex-col gap-1.5
-          rounded-[18px] border border-line bg-surface p-1.5 shadow-card
-          transition-[border-color,box-shadow] duration-150
-          focus-within:border-line-strong focus-within:shadow-raised"
+        className="relative isolate mx-auto flex w-full max-w-3xl flex-col gap-1
+          rounded-composer bg-surface p-2 shadow-raised"
         style={errorNonce > 0 ? { animation: "shake 400ms var(--ease-out-strong)" } : undefined}
       >
         {menu && menuOpen && (
@@ -386,14 +384,14 @@ export function Composer({
 
         {(attachments.length > 0 || uploading > 0 || uploadError) && (
           <div
-            className="flex flex-wrap items-center gap-1.5 px-1 pt-0.5"
+            className="flex flex-wrap items-center gap-2 px-1 pt-1"
             style={{ animation: "fade-up var(--duration-quick) var(--ease-out-strong) both" }}
           >
             {attachments.map((attachment, i) => (
               <span
                 key={i}
-                className="flex h-7 max-w-[180px] items-center gap-1.5 rounded-chip bg-field pl-1 pr-1.5
-                  text-meta text-ink-2 shadow-hairline"
+                className="flex h-9 max-w-[200px] items-center gap-2 rounded-control bg-field pl-1.5 pr-2
+                  text-label text-ink-2"
               >
                 {attachment.kind === "image" ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -404,32 +402,32 @@ export function Composer({
                         : attachment.url
                     }
                     alt=""
-                    className="size-5 shrink-0 rounded-[4px] object-cover"
+                    className="size-6 shrink-0 rounded-[6px] object-cover"
                   />
                 ) : (
-                  <span className="flex size-5 shrink-0 items-center justify-center text-ink-3">
-                    <IconFile size={12} />
+                  <span className="flex size-6 shrink-0 items-center justify-center text-ink-3">
+                    <IconFile size={14} />
                   </span>
                 )}
-                <span className="truncate font-mono">{attachment.name}</span>
+                <span className="truncate">{attachment.name}</span>
                 <button
                   type="button"
                   aria-label={`Remove ${attachment.name}`}
                   onClick={() =>
                     setAttachments((current) => current.filter((_, index) => index !== i))
                   }
-                  className="shrink-0 text-ink-3 transition-colors duration-100 hover:text-ink"
+                  className="tap-target -mr-0.5 grid size-5 shrink-0 place-items-center rounded-full text-ink-3 transition-colors duration-150 hover:bg-hover-2 hover:text-ink"
                 >
-                  <IconCross size={11} />
+                  <IconCross size={12} />
                 </button>
               </span>
             ))}
             {uploading > 0 && (
-              <span className="text-meta text-ink-3 tabular-nums">
+              <span className="text-label text-ink-3 tabular-nums">
                 Uploading {uploading}…
               </span>
             )}
-            {uploadError && <span className="text-meta text-red">{uploadError}</span>}
+            {uploadError && <span className="text-label text-red">{uploadError}</span>}
           </div>
         )}
 
@@ -570,8 +568,8 @@ export function Composer({
                 : `Message ${agentName}…`)
             }
             aria-label="Prompt"
-            className="min-h-8 w-full min-w-0 resize-none bg-transparent
-              px-1.5 py-[7px] text-input text-ink outline-none
+            className="min-h-10 w-full min-w-0 resize-none bg-transparent
+              px-2.5 py-2 text-input text-ink outline-none
               [overflow-wrap:anywhere] placeholder:text-ink-3"
           />
 
@@ -585,12 +583,12 @@ export function Composer({
               aria-label="Attach a file"
               disabled={disabled}
               onClick={() => fileRef.current?.click()}
-              className="tap-target flex size-8 shrink-0 items-center
-                justify-center rounded-full text-ink-3 transition-colors duration-100
-                enabled:hover:bg-hover-2 enabled:hover:text-ink-2 enabled:active:scale-[0.94]
+              className="tap-target flex size-9 shrink-0 items-center
+                justify-center rounded-full text-ink-2 transition-[color,background-color,transform] duration-150
+                enabled:hover:bg-hover enabled:hover:text-ink enabled:active:scale-[0.94]
                 disabled:opacity-40"
             >
-              <IconPaperclip size={16} />
+              <IconPaperclip size={18} />
             </button>
 
             <div className="flex min-w-0 flex-1 items-center">
@@ -600,15 +598,15 @@ export function Composer({
                     type="button"
                     onClick={onPickModel}
                     aria-label={`Model: ${modelLabel}. Change it.`}
-                    className="tap-target flex h-8 min-w-0 items-center gap-1
-                      rounded-control px-1.5 font-mono text-meta text-ink-3 transition-colors duration-100
-                      hover:bg-hover-2 hover:text-ink-2 active:scale-[0.96]"
+                    className="tap-target flex h-9 min-w-0 items-center gap-1.5
+                      rounded-full px-2.5 text-label text-ink-2 transition-[color,background-color,transform] duration-150
+                      hover:bg-hover hover:text-ink active:scale-[0.96]"
                   >
-                    <IconChip size={12} className="shrink-0" />
+                    <IconChip size={15} className="shrink-0" />
                     <span className="truncate">{modelLabel}</span>
                   </button>
                 ) : (
-                  <span className="flex h-8 min-w-0 items-center truncate px-1.5 font-mono text-meta text-ink-3">
+                  <span className="flex h-9 min-w-0 items-center truncate px-2.5 text-label text-ink-3">
                     {modelLabel}
                   </span>
                 ))}
@@ -623,7 +621,7 @@ export function Composer({
 
             {running && canSend && (
               <span
-                className="shrink-0 px-1 text-micro text-ink-3"
+                className="shrink-0 px-1.5 text-meta text-ink-3"
                 style={{ animation: "fade-in var(--duration-quick) ease-out both" }}
               >
                 {/* attachments always queue — steer is text-only */}
@@ -645,13 +643,12 @@ export function Composer({
                 // settles, and a second /stop does nothing but look broken.
                 disabled={stopping}
                 onClick={onStop}
-                className="tap-target flex size-8 shrink-0 items-center justify-center
-                  rounded-full bg-field text-ink-2 transition-colors duration-150
-                  enabled:hover:bg-hover enabled:hover:text-ink enabled:active:scale-[0.94]
-                  disabled:opacity-40"
+                className="tap-target flex size-9 shrink-0 items-center justify-center
+                  rounded-full bg-field text-ink transition-[background-color,transform] duration-150
+                  enabled:active:scale-[0.94] disabled:opacity-40"
                 style={{ animation: "pop-in var(--duration-fast) var(--ease-out-strong) both" }}
               >
-                <IconStop size={14} />
+                <IconStop size={15} />
               </button>
             )}
 
@@ -660,17 +657,17 @@ export function Composer({
               aria-label={running ? "Steer the run" : "Send"}
               disabled={!canSend}
               onClick={send}
-              className="tap-target flex size-8 shrink-0 items-center
-                justify-center rounded-full transition-[background-color,color,transform] duration-200
+              className="tap-target flex size-9 shrink-0 items-center
+                justify-center rounded-full transition-[background-color,color,transform] duration-150
                 enabled:active:scale-[0.94]"
               // Disabled reads as recessed — field on surface, faint glyph —
               // rather than a second grey that looks almost pressable.
               style={{
                 background: canSend ? "var(--ink)" : "var(--field)",
-                color: canSend ? "var(--surface)" : "var(--ink-3)",
+                color: canSend ? "var(--page)" : "var(--ink-3)",
               }}
             >
-              <IconArrowUp size={16} />
+              <IconArrowUp size={18} />
             </button>
           </div>
         </div>

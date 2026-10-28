@@ -94,7 +94,7 @@ export function FileLinks({
 
   return (
     <div
-      className="flex flex-wrap gap-1.5 pt-0.5"
+      className="flex flex-wrap gap-2 pt-0.5"
       style={{ animation: "fade-up var(--duration-fast) var(--ease-out-strong) both" }}
     >
       {shown.map((file) => {
@@ -109,7 +109,7 @@ export function FileLinks({
               <img
                 src={href}
                 alt={file.name}
-                className="max-h-56 max-w-full rounded-control object-cover shadow-hairline"
+                className="max-h-64 max-w-full rounded-card object-cover shadow-hairline"
               />
             </a>
           );
@@ -123,12 +123,12 @@ export function FileLinks({
             // sets Content-Disposition per type and this follows it.
             target="_blank"
             rel="noreferrer"
-            className="flex h-9 max-w-full items-center gap-2 rounded-control bg-field px-2.5
-              text-label text-ink-2 shadow-hairline transition-colors duration-100
-              hover:bg-hover-2 hover:text-ink active:scale-[0.98]"
+            className="flex h-12 max-w-full items-center gap-3 rounded-card py-2 pr-4 pl-2
+              text-ui text-ink shadow-card transition-[background-color,transform] duration-150
+              hover:bg-hover active:scale-[0.98]"
           >
-            <span className="shrink-0 text-ink-3">
-              <IconFile size={14} />
+            <span className="grid size-8 shrink-0 place-items-center rounded-[9px] bg-field text-ink-2">
+              <IconFile size={16} />
             </span>
             <span className="truncate font-medium">{file.name}</span>
             <span className="shrink-0 text-meta text-ink-3 tabular-nums">

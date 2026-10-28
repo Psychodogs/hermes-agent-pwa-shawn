@@ -5,6 +5,13 @@ import { useRouter } from "next/navigation";
 import { Sheet } from "@/components/ui/Sheet";
 import type { Project } from "@/lib/chat-types";
 import { parseSkills } from "@/lib/instructions";
+import {
+  FIELD_CLASS,
+  HELP_CLASS,
+  LABEL_CLASS,
+  TEXTAREA_CLASS,
+  buttonClass,
+} from "@/components/ui/SettingsControls";
 import { SkillPicker, useSkillCatalogue } from "./SkillPicker";
 import { useStatus } from "@/hooks/useStatus";
 
@@ -16,6 +23,10 @@ import { useStatus } from "@/hooks/useStatus";
  * The gear that used to open this directly is now a menu (HeaderMenu) — this
  * is "Edit project", one entry among several, and the app-wide settings that
  * were awkwardly stapled to the foot of this form live at /settings. */
+
+/** A lifecycle action: a full-width row, inset so its text lines up with the fields. */
+const ROW_ACTION =
+  "-mx-3 flex min-h-10 items-center rounded-control px-3 text-left text-ui transition-[transform,background-color] duration-150 enabled:hover:bg-hover enabled:active:scale-[0.99] disabled:opacity-40";
 
 export function ProjectSettingsSheet({
   project,
@@ -203,10 +214,10 @@ function ProjectSettingsForm({
   }
 
   return (
-    <form onSubmit={save} className="flex flex-col gap-3 p-4">
-      <div className="flex items-end gap-2">
+    <form onSubmit={save} className="flex flex-col gap-5 p-5">
+      <div className="flex items-end gap-3">
         <div className="shrink-0">
-          <label htmlFor="project-emoji" className="text-label font-medium text-ink">
+          <label htmlFor="project-emoji" className={LABEL_CLASS}>
             Icon
           </label>
           {/* One grapheme, not a picker. iOS gives every text field an emoji
@@ -220,13 +231,11 @@ function ProjectSettingsForm({
             }
             placeholder="💬"
             aria-label="Project emoji"
-            className="mt-2 h-9 w-12 rounded-control border border-line bg-field text-center
-              text-input text-ink outline-none transition-colors duration-150
-              placeholder:text-ink-3 focus:border-line-strong"
+            className={`mt-1.5 w-14! text-center ${FIELD_CLASS}`}
           />
         </div>
         <div className="min-w-0 flex-1">
-          <label htmlFor="project-name" className="text-label font-medium text-ink">
+          <label htmlFor="project-name" className={LABEL_CLASS}>
             Name
           </label>
           <input
@@ -234,21 +243,16 @@ function ProjectSettingsForm({
             value={name}
             onChange={(event) => setName(event.target.value)}
             placeholder={project.name}
-            className="mt-2 h-9 w-full rounded-control border border-line bg-field px-2.5
-              text-input text-ink outline-none transition-colors duration-150
-              placeholder:text-ink-3 focus:border-line-strong sm:text-label"
+            className={`mt-1.5 ${FIELD_CLASS}`}
           />
         </div>
       </div>
 
       <div>
-        <label
-          htmlFor="project-instructions"
-          className="text-label font-medium text-ink"
-        >
+        <label htmlFor="project-instructions" className={LABEL_CLASS}>
           Standing instructions
         </label>
-        <p className="mt-0.5 text-meta leading-snug text-ink-3">
+        <p className={`mt-0.5 ${HELP_CLASS}`}>
           Sent with every message in this project. Unlike a pinned message it is
           never lost to context compaction.
         </p>
@@ -258,22 +262,20 @@ function ProjectSettingsForm({
           onChange={(event) => setInstructions(event.target.value)}
           rows={8}
           placeholder="e.g. Use the fitness journal as the authoritative source for meals, weight and training."
-          className="mt-2 w-full resize-y rounded-control border border-line bg-field px-2.5 py-2
-            text-input leading-relaxed text-ink outline-none transition-colors duration-150
-            placeholder:text-ink-3 focus:border-line-strong sm:text-label"
+          className={`mt-2.5 ${TEXTAREA_CLASS}`}
         />
       </div>
 
       <div>
-        <span className="text-label font-medium text-ink">Linked skills</span>
+        <span className={LABEL_CLASS}>Linked skills</span>
         <SkillPicker value={skills} onChange={setSkills} catalogue={catalogue} />
       </div>
 
       <div>
-        <label htmlFor="project-cwd" className="text-label font-medium text-ink">
+        <label htmlFor="project-cwd" className={LABEL_CLASS}>
           Working directory
         </label>
-        <p className="mt-0.5 text-meta leading-snug text-ink-3">
+        <p className={`mt-0.5 ${HELP_CLASS}`}>
           Stated to the agent as text — the API has no per-request working directory,
           so tools need absolute paths.
         </p>
@@ -282,13 +284,11 @@ function ProjectSettingsForm({
           value={cwd}
           onChange={(event) => setCwd(event.target.value)}
           placeholder="/srv/code/example"
-          className="mt-2 h-9 w-full rounded-control border border-line bg-field px-2.5 font-mono
-            text-input text-ink outline-none transition-colors duration-150
-            placeholder:text-ink-3 focus:border-line-strong sm:text-label"
+          className={`mt-2.5 font-mono ${FIELD_CLASS}`}
         />
       </div>
 
-      <label className="flex items-center gap-2 text-label text-ink">
+      <label className="flex items-center gap-2.5 text-ui text-ink">
         <input
           type="checkbox"
           checked={pinned}
@@ -305,7 +305,7 @@ function ProjectSettingsForm({
       )}
 
       {/* Thread lifecycle — reversible things first, then the one that isn't. */}
-      <div className="flex flex-col items-start gap-1 border-t border-line pt-3">
+      <div className="flex flex-col gap-0.5 border-t border-line pt-4">
         {/* Hidden on a Hermes without POST /api/sessions/{id}/fork, which would
           * only 404. */}
         {features.session_fork && (
@@ -313,9 +313,7 @@ function ProjectSettingsForm({
             type="button"
             onClick={branch}
             disabled={busy}
-            className="h-8 rounded-control px-2.5 text-label font-medium text-ink-2
-              transition-colors duration-100 enabled:hover:bg-hover enabled:hover:text-ink
-              disabled:opacity-50"
+            className={`${ROW_ACTION} text-ink`}
           >
             Branch this session
           </button>
@@ -324,27 +322,25 @@ function ProjectSettingsForm({
           <button
             type="button"
             onClick={() => setConfirmReset(true)}
-            className="h-8 rounded-control px-2.5 text-label font-medium text-ink-2
-              transition-colors duration-100 hover:bg-hover hover:text-ink"
+            className={`${ROW_ACTION} text-ink`}
           >
             Start a fresh thread
           </button>
         ) : (
           <div
-            className="w-full"
+            className="my-1 rounded-card bg-surface p-4 shadow-card"
             style={{ animation: "fade-in var(--duration-quick) ease-out both" }}
           >
-            <p className="text-label font-medium text-ink">Start a fresh thread?</p>
-            <p className="mt-1 text-meta leading-snug text-ink-2">
+            <p className="text-ui font-semibold text-ink">Start a fresh thread?</p>
+            <p className="mt-1 text-label text-ink-2">
               The project keeps its name, instructions and skills. The current
               conversation stays in the sidebar and the new chat opens beside it.
             </p>
-            <div className="mt-2.5 flex items-center gap-2">
+            <div className="mt-3 flex items-center justify-end gap-2">
               <button
                 type="button"
                 onClick={() => setConfirmReset(false)}
-                className="h-8 rounded-control px-2.5 text-label font-medium text-ink-2
-                  transition-colors duration-100 hover:bg-hover hover:text-ink"
+                className={buttonClass("secondary", "sm")}
               >
                 Cancel
               </button>
@@ -352,9 +348,7 @@ function ProjectSettingsForm({
                 type="button"
                 onClick={reset}
                 disabled={busy}
-                className="h-8 rounded-control border border-line-strong px-3 text-label
-                  font-medium text-ink transition-[background-color,transform] duration-200
-                  enabled:hover:bg-hover enabled:active:scale-[0.98]"
+                className={buttonClass("primary", "sm")}
               >
                 {busy ? "Starting…" : "Start fresh"}
               </button>
@@ -366,8 +360,7 @@ function ProjectSettingsForm({
           type="button"
           onClick={archive}
           disabled={busy}
-          className="h-8 rounded-control px-2.5 text-label font-medium text-ink-2
-            transition-colors duration-100 hover:bg-hover hover:text-ink"
+          className={`${ROW_ACTION} text-ink`}
         >
           Archive project
         </button>
@@ -376,25 +369,24 @@ function ProjectSettingsForm({
           <button
             type="button"
             onClick={() => setConfirmDelete(true)}
-            className="h-8 rounded-control px-2.5 text-label font-medium text-red
-              transition-colors duration-100 hover:bg-hover"
+            className={`${ROW_ACTION} text-red`}
           >
             Delete project
           </button>
         ) : (
           <div
-            className="w-full"
+            className="my-1 rounded-card bg-surface p-4 shadow-card"
             style={{ animation: "fade-in var(--duration-quick) ease-out both" }}
           >
-            <p className="text-label font-medium text-ink">
+            <p className="text-ui font-semibold text-ink">
               Delete “{project.name}”?
             </p>
-            <label className="mt-2 flex items-start gap-2 text-meta leading-snug text-ink-2">
+            <label className="mt-2 flex items-start gap-2.5 text-label text-ink-2">
               <input
                 type="checkbox"
                 checked={dropSession}
                 onChange={(event) => setDropSession(event.target.checked)}
-                className="mt-0.5 size-3.5 accent-[var(--ink)]"
+                className="mt-0.5 size-4 shrink-0 accent-[var(--ink)]"
               />
               <span>
                 Also delete the Hermes conversation
@@ -405,15 +397,14 @@ function ProjectSettingsForm({
                 and other Hermes clients.
               </span>
             </label>
-            <div className="mt-2.5 flex items-center gap-2">
+            <div className="mt-3 flex items-center justify-end gap-2">
               <button
                 type="button"
                 onClick={() => {
                   setConfirmDelete(false);
                   setDropSession(false);
                 }}
-                className="h-8 rounded-control px-2.5 text-label font-medium text-ink-2
-                  transition-colors duration-100 hover:bg-hover hover:text-ink"
+                className={buttonClass("secondary", "sm")}
               >
                 Keep
               </button>
@@ -421,9 +412,7 @@ function ProjectSettingsForm({
                 type="button"
                 onClick={remove}
                 disabled={busy}
-                className="h-8 rounded-control px-3 text-label font-medium text-white
-                  transition-[background-color,transform] duration-200 enabled:active:scale-[0.98]"
-                style={{ background: "var(--red, #dc2626)" }}
+                className={buttonClass("danger", "sm")}
               >
                 {busy ? "Deleting…" : dropSession ? "Delete both" : "Delete project"}
               </button>
@@ -432,25 +421,11 @@ function ProjectSettingsForm({
         )}
       </div>
 
-      <div className="flex items-center justify-end gap-2 pt-1">
-        <button
-          type="button"
-          onClick={onClose}
-          className="h-8 rounded-control px-2.5 text-label font-medium text-ink-2
-            transition-colors duration-100 hover:bg-hover hover:text-ink"
-        >
+      <div className="flex items-center justify-end gap-2">
+        <button type="button" onClick={onClose} className={buttonClass("secondary")}>
           Cancel
         </button>
-        <button
-          type="submit"
-          disabled={busy}
-          className="h-8 rounded-control px-3 text-label font-medium
-            transition-[background-color,color,transform] duration-200 enabled:active:scale-[0.98]"
-          style={{
-            background: busy ? "var(--line-strong)" : "var(--ink)",
-            color: busy ? "var(--ink-2)" : "var(--surface)",
-          }}
-        >
+        <button type="submit" disabled={busy} className={buttonClass("primary")}>
           {busy ? "Saving…" : "Save"}
         </button>
       </div>

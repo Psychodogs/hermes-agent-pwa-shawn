@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { buttonClass } from "@/components/ui/SettingsControls";
 
 /* Starting a fresh thread is the pencil's job, and it is the one action in the
  * app that throws away continuity — the project keeps everything about itself
@@ -86,21 +87,21 @@ function NewChatConfirm({
         role="dialog"
         aria-modal="true"
         aria-label="New chat"
-        className="relative w-full max-w-sm overflow-hidden rounded-card bg-surface shadow-overlay"
+        className="relative w-full max-w-sm overflow-hidden rounded-[20px] bg-surface shadow-overlay"
         style={{
           animation: "pop-in var(--duration-fast) var(--ease-out-strong) both",
           marginBottom: "max(0px, calc(env(safe-area-inset-bottom) - 4px))",
         }}
       >
-        <div className="primitive-card-pad">
-          <span className="text-ui font-medium text-ink">Start a new chat?</span>
-          <p className="mt-1.5 text-meta leading-snug text-ink-2">
+        <div className="px-5 pt-5 pb-4">
+          <span className="text-title font-semibold text-ink">Start a new chat?</span>
+          <p className="mt-2 text-ui text-ink-2">
             The project keeps its name, instructions and skills. The current
             conversation stays in the project tree, and a new one opens beside it.
           </p>
           {error && (
             <p
-              className="mt-2 text-label text-red"
+              className="mt-3 text-label text-red"
               style={{ animation: "fade-in 150ms ease-out both" }}
             >
               {error}
@@ -108,25 +109,15 @@ function NewChatConfirm({
           )}
         </div>
 
-        <div className="primitive-card-footer flex items-center justify-end gap-2 border-t border-line">
-          <button
-            type="button"
-            onClick={onClose}
-            className="h-8 rounded-control px-2.5 text-label font-medium text-ink-2
-              transition-colors duration-100 hover:bg-hover hover:text-ink"
-          >
+        <div className="flex items-center justify-end gap-2 px-5 pb-5">
+          <button type="button" onClick={onClose} className={buttonClass("secondary")}>
             Cancel
           </button>
           <button
             type="button"
             onClick={start}
             disabled={busy}
-            className="h-8 rounded-control px-3 text-label font-medium
-              transition-[background-color,color,transform] duration-200 enabled:active:scale-[0.98]"
-            style={{
-              background: busy ? "var(--line-strong)" : "var(--ink)",
-              color: busy ? "var(--ink-2)" : "var(--surface)",
-            }}
+            className={buttonClass("primary")}
           >
             {busy ? "Starting…" : "Start"}
           </button>

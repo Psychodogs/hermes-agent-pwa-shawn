@@ -20,19 +20,19 @@ export function Toast({
   return (
     <div
       role="status"
-      className="pointer-events-auto flex items-center gap-2 rounded-card bg-surface px-2.5 py-2 shadow-overlay"
+      className={`pointer-events-auto flex h-11 items-center gap-2.5 rounded-full bg-surface pl-4 shadow-overlay ${
+        action || onDismiss ? "pr-1.5" : "pr-4"
+      }`}
       style={{ animation: "toast-in var(--duration-fast) var(--ease-out-strong) both" }}
     >
-      <span
-        className={`size-1.5 shrink-0 rounded-full ${tone === "error" ? "bg-red" : "bg-ink-3"}`}
-      />
-      <span className="min-w-0 flex-1 truncate text-label text-ink">{message}</span>
+      {tone === "error" && <span className="size-2 shrink-0 rounded-full bg-red" />}
+      <span className="min-w-0 flex-1 truncate text-ui text-ink">{message}</span>
       {action && (
         <button
           type="button"
           onClick={action.onClick}
-          className="shrink-0 rounded-chip px-1.5 py-0.5 text-label font-medium text-accent-ink
-            transition-colors duration-100 hover:bg-hover"
+          className="h-8 shrink-0 rounded-full px-3 text-ui font-medium text-ink
+            transition-[transform,background-color] duration-150 hover:bg-hover active:scale-[0.97]"
         >
           {action.label}
         </button>
@@ -42,10 +42,11 @@ export function Toast({
           type="button"
           aria-label="Dismiss"
           onClick={onDismiss}
-          className="flex size-5 shrink-0 items-center justify-center rounded-full text-ink-3
-            transition-colors duration-100 hover:bg-hover hover:text-ink"
+          className="flex size-8 shrink-0 items-center justify-center rounded-full text-ink-2
+            transition-[transform,background-color,color] duration-150 hover:bg-hover
+            hover:text-ink active:scale-[0.97]"
         >
-          <IconCross size={11} />
+          <IconCross size={14} />
         </button>
       )}
     </div>

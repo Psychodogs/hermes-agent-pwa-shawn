@@ -147,47 +147,58 @@ function SearchPanel({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label="Search"
-      className="h-app fixed inset-x-0 top-0 z-60 flex flex-col bg-page"
-    >
-      <div className="pt-safe shrink-0 border-b border-line bg-page">
-        <div className="px-safe flex h-14 items-center gap-2">
-          <div className="flex min-w-0 flex-1 items-center gap-2 rounded-control border border-line
-            bg-field px-2.5 transition-colors duration-150 focus-within:border-line-strong">
-            <span className="shrink-0 text-ink-3">
-              <IconSearch size={15} />
-            </span>
-            <input
-              ref={inputRef}
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" && !event.nativeEvent.isComposing && firstHref) {
-                  event.preventDefault();
-                  router.push(firstHref);
-                  onClose();
-                } else if (event.key === "ArrowDown") {
-                  event.preventDefault();
-                  rows()[0]?.focus();
-                }
-              }}
-              type="search"
-              placeholder="Search projects and prompts…"
-              aria-label="Search"
-              className="h-9 min-w-0 flex-1 bg-transparent text-input text-ink outline-none
-                placeholder:text-ink-3 [&::-webkit-search-cancel-button]:hidden"
-            />
-          </div>
+    <div className="h-app fixed inset-x-0 top-0 z-60 flex flex-col sm:items-center sm:px-4 sm:pt-[12vh]">
+      {/* Phone: the panel is the whole screen and covers this. Above sm it is a
+          palette floating over the page, and a tap outside it dismisses. */}
+      <button
+        type="button"
+        aria-hidden
+        tabIndex={-1}
+        onClick={onClose}
+        className="absolute inset-0 cursor-default bg-scrim"
+        style={{ animation: "fade-in var(--duration-quick) ease-out both" }}
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Search"
+        className="relative flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-page
+          [animation:fade-in_var(--duration-quick)_ease-out_both] sm:max-h-[min(34rem,calc(var(--app-height,100dvh)-12vh-2rem))]
+          sm:max-w-xl sm:flex-none sm:rounded-popover sm:bg-surface sm:shadow-overlay
+          sm:[animation:pop-in_var(--duration-quick)_var(--ease-out-strong)_both]"
+      >
+      <div className="pt-safe shrink-0 border-b border-line">
+        <div className="px-safe flex h-12 items-center gap-2.5">
+          <span className="shrink-0 text-ink-3">
+            <IconSearch size={18} />
+          </span>
+          <input
+            ref={inputRef}
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && !event.nativeEvent.isComposing && firstHref) {
+                event.preventDefault();
+                router.push(firstHref);
+                onClose();
+              } else if (event.key === "ArrowDown") {
+                event.preventDefault();
+                rows()[0]?.focus();
+              }
+            }}
+            type="search"
+            placeholder="Search projects and prompts…"
+            aria-label="Search"
+            className="h-12 min-w-0 flex-1 bg-transparent text-input text-ink outline-none
+              placeholder:text-ink-3 [&::-webkit-search-cancel-button]:hidden"
+          />
           <button
             type="button"
             onClick={onClose}
             aria-label="Close search"
-            className="tap-target flex size-9 shrink-0 items-center justify-center rounded-control
-              text-ink-2 transition-colors duration-100 hover:bg-hover-2 hover:text-ink
-              active:scale-[0.96]"
+            className="tap-target -mr-1.5 flex size-9 shrink-0 items-center justify-center rounded-control
+              text-ink-2 transition-[transform,background-color,color] duration-150 hover:bg-hover
+              hover:text-ink active:scale-[0.97]"
           >
             <IconCross size={16} />
           </button>
@@ -199,7 +210,7 @@ function SearchPanel({ onClose }: { onClose: () => void }) {
         onKeyDown={onListKey}
         className="scroll-area min-h-0 flex-1 overflow-y-auto overscroll-contain"
       >
-        <div className="px-safe pb-safe mx-auto w-full max-w-3xl pt-2">
+        <div className="px-safe pb-safe w-full pt-1.5">
           {!active && (
             <p className="py-10 text-center text-label text-ink-3">
               Type at least two characters.
@@ -236,7 +247,7 @@ function SearchPanel({ onClose }: { onClose: () => void }) {
                   enterHint={hasKeyboard && i === 0 && shown.projects.length === 0}
                   href={`/p/${hit.projectId}/s/${hit.sessionId}`}
                   onNavigate={onClose}
-                  icon={<IconMessage size={14} />}
+                  icon={<IconMessage size={16} />}
                   title={hit.preview}
                   detail={`${hit.projectEmoji ? `${hit.projectEmoji} ` : ""}${
                     hit.projectName
@@ -259,7 +270,7 @@ function SearchPanel({ onClose }: { onClose: () => void }) {
                   }
                   href={`/p/${hit.projectId}/s/${hit.sessionId}`}
                   onNavigate={onClose}
-                  icon={<IconMessage size={14} />}
+                  icon={<IconMessage size={16} />}
                   title={hit.snippet}
                   detail={`${hit.jobName} · ${
                     hit.projectEmoji ? `${hit.projectEmoji} ` : ""
@@ -275,7 +286,7 @@ function SearchPanel({ onClose }: { onClose: () => void }) {
           {(shown.projects.length > 0 ||
             shown.messages.length > 0 ||
             shown.deliveries.length > 0) && (
-            <p className="px-1 py-4 text-meta text-ink-3">
+            <p className="pt-2 pb-4 text-label text-ink-3">
               Project names, instructions, the opening prompt of each run, and
               what scheduled jobs reported. Message bodies live in Hermes and
               aren’t searchable.
@@ -283,16 +294,15 @@ function SearchPanel({ onClose }: { onClose: () => void }) {
           )}
         </div>
       </div>
+      </div>
     </div>
   );
 }
 
 function Section({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="pb-3" style={{ animation: "fade-up var(--duration-fast) var(--ease-out-strong) both" }}>
-      <h2 className="px-1 pt-3 pb-1 text-meta font-medium tracking-wide text-ink-3 uppercase">
-        {label}
-      </h2>
+    <div className="pb-1" style={{ animation: "fade-up var(--duration-fast) var(--ease-out-strong) both" }}>
+      <h2 className="pt-2.5 pb-1 text-label text-ink-3">{label}</h2>
       <div className="flex flex-col">{children}</div>
     </div>
   );
@@ -320,19 +330,19 @@ function Row({
     <Link
       href={href}
       onClick={onNavigate}
-      className="-mx-1 flex min-h-11 items-center gap-2.5 rounded-control px-1 py-1.5
-        transition-colors duration-100 hover:bg-hover-2 focus-visible:bg-hover-2
+      className="-mx-2.5 flex min-h-12 items-center gap-3 rounded-control px-2.5 py-1.5
+        transition-[transform,background-color] duration-150 hover:bg-hover focus-visible:bg-hover
         focus-visible:outline-none active:scale-[0.99]"
     >
-      <span className="grid size-8 shrink-0 place-items-center rounded-control bg-canvas text-ink-3 shadow-hairline">
-        {icon ?? <span className="text-[15px] leading-none">{glyph}</span>}
+      <span className="grid size-8 shrink-0 place-items-center rounded-chip bg-field text-ink-2">
+        {icon ?? <span className="text-ui leading-none">{glyph}</span>}
       </span>
       <span className="flex min-w-0 flex-1 flex-col">
-        <span className="truncate text-label font-medium text-ink">{title}</span>
-        {detail && <span className="truncate text-meta text-ink-3">{detail}</span>}
+        <span className="truncate text-ui text-ink">{title}</span>
+        {detail && <span className="truncate text-label text-ink-3">{detail}</span>}
       </span>
       {enterHint && (
-        <kbd className="shrink-0 rounded-chip bg-field px-1.5 font-mono text-meta text-ink-3 shadow-hairline">
+        <kbd className="shrink-0 rounded-chip bg-field px-1.5 py-0.5 font-sans text-meta text-ink-3">
           ↵
         </kbd>
       )}

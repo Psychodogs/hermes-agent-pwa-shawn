@@ -41,8 +41,8 @@ function useCanShare(): boolean {
   );
 }
 
-const buttonClass = `flex h-7 items-center gap-1.5 rounded-chip px-1.5 text-label font-medium
-  text-ink-3 transition-colors duration-100 hover:bg-hover-2 hover:text-ink-2 active:scale-[0.97]`;
+const buttonClass =
+  "flex h-8 min-w-8 items-center justify-center gap-1 rounded-control px-2 text-label text-ink-2 transition-[color,background-color,transform] duration-150 hover:bg-hover hover:text-ink active:scale-[0.97]";
 
 function timeOf(ts: number): string {
   return new Date(ts).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
@@ -81,7 +81,7 @@ export function MessageActions({
 
   return (
     <div
-      className={`-mx-1.5 flex items-center gap-0.5 transition-opacity duration-150 ${
+      className={`-mx-2 flex items-center gap-0.5 transition-opacity duration-150 ${
         align === "end" ? "flex-row-reverse" : ""
       } ${
         persistent
@@ -96,7 +96,7 @@ export function MessageActions({
         title="Copy"
         className={buttonClass}
       >
-        {copied ? <IconCheck size={13} /> : <IconCopy size={13} />}
+        {copied ? <IconCheck size={16} /> : <IconCopy size={16} />}
         {copied && <span>Copied</span>}
       </button>
       {canShare && (
@@ -107,7 +107,7 @@ export function MessageActions({
           title="Share"
           className={buttonClass}
         >
-          <IconShare size={13} />
+          <IconShare size={16} />
         </button>
       )}
       {onEdit && (
@@ -118,12 +118,12 @@ export function MessageActions({
           title="Edit and resend"
           className={buttonClass}
         >
-          <IconEdit size={13} />
+          <IconEdit size={16} />
         </button>
       )}
       {onRetry && (
         <button type="button" onClick={onRetry} className={buttonClass}>
-          <IconRetry size={13} />
+          <IconRetry size={16} />
           Retry
         </button>
       )}
@@ -132,7 +132,7 @@ export function MessageActions({
         <time
           dateTime={new Date(createdAt).toISOString()}
           title={new Date(createdAt).toLocaleString()}
-          className="px-1.5 text-meta text-ink-3 tabular-nums"
+          className="px-2 text-meta text-ink-3 tabular-nums"
         >
           {timeOf(createdAt)}
         </time>
@@ -170,12 +170,8 @@ export function startsNewDay(ts: number, previous: number | undefined): boolean 
 
 export function DaySeparator({ ts }: { ts: number }) {
   return (
-    <div role="separator" className="flex items-center gap-3 py-1" aria-label={dayLabel(ts)}>
-      <span className="h-px flex-1 bg-line" />
-      <span className="text-micro font-semibold tracking-[0.06em] text-ink-3 uppercase">
-        {dayLabel(ts)}
-      </span>
-      <span className="h-px flex-1 bg-line" />
+    <div role="separator" className="flex justify-center py-1" aria-label={dayLabel(ts)}>
+      <span className="text-label font-medium text-ink-3">{dayLabel(ts)}</span>
     </div>
   );
 }

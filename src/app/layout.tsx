@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import { AgentNameProvider } from "@/components/AgentNameContext";
 import { LaunchNormalizer } from "@/components/LaunchNormalizer";
 import { PreferencesProvider } from "@/components/PreferencesContext";
@@ -7,16 +6,6 @@ import { getAgentName } from "@/lib/app-settings";
 import { APP_NAME } from "@/lib/branding";
 import { PREFS_KEY } from "@/lib/preferences";
 import "./globals.css";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   title: APP_NAME,
@@ -88,8 +77,8 @@ addEventListener("orientationchange",function(){full=0;setTimeout(set,120)});
 
 // themeColor lives here, not in metadata — it's deprecated there in Next 16.
 export const viewport: Viewport = {
-  // = the dark --page token, oklch(14.5% 0 0)
-  themeColor: "#0a0a0a",
+  // = the dark --page token. applyPrefsToDocument() keeps it in step after.
+  themeColor: "#212121",
   // The pre-paint default. applyPrefsToDocument() overrides it with an inline
   // style once a theme is chosen; this is what stops rubber-banding exposing a
   // white strip before that happens.
@@ -118,7 +107,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       // would otherwise hydrate over it and undo the pre-paint correction.
       // Dark remains the default; the tokens define both modes.
       suppressHydrationWarning
-      className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+      // No web fonts: the type is the platform's own (see --font-sans).
+      className="antialiased"
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: `${NO_FLASH};${APP_HEIGHT}` }} />

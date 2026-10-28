@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { IconCheck, IconCross, IconPlus } from "@/components/primitives/icons";
+import { FIELD_CLASS, HELP_CLASS } from "@/components/ui/SettingsControls";
 import type { HermesSkill } from "@/lib/hermes";
 
 /* Skills are linked by name, never inlined. Hermes can preload a skill's full
@@ -59,28 +60,30 @@ export function SkillPicker({
   return (
     <div>
       {hint && (
-        <p className="mt-0.5 text-meta leading-snug text-ink-3">
+        <p className={`mt-0.5 ${HELP_CLASS}`}>
           Named in every message so the agent loads them with <code>skill_view</code>{" "}
           when relevant.
         </p>
       )}
 
       {value.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1.5">
+        <div className="mt-2.5 flex flex-wrap gap-2">
           {value.map((s) => (
             <span
               key={s}
-              className="inline-flex h-7 items-center gap-1 rounded-chip border border-line
-                bg-field px-2 text-label text-ink"
+              className="inline-flex h-8 items-center gap-1 rounded-full bg-field pr-1.5 pl-3
+                text-label text-ink"
             >
               {s}
               <button
                 type="button"
                 aria-label={`Unlink ${s}`}
                 onClick={() => onChange(value.filter((x) => x !== s))}
-                className="text-ink-3 transition-colors duration-100 hover:text-ink"
+                className="flex size-5 items-center justify-center rounded-full text-ink-3
+                  transition-[transform,background-color,color] duration-150 hover:bg-hover-2
+                  hover:text-ink active:scale-[0.97]"
               >
-                <IconCross size={11} />
+                <IconCross size={12} />
               </button>
             </span>
           ))}
@@ -92,13 +95,11 @@ export function SkillPicker({
         onChange={(event) => setQuery(event.target.value)}
         placeholder={catalogue.length ? "Search skills…" : "Skill list unavailable"}
         aria-label="Search skills"
-        className="mt-2 h-9 w-full rounded-control border border-line bg-field px-2.5
-          text-input text-ink outline-none transition-colors duration-150
-          placeholder:text-ink-3 focus:border-line-strong sm:text-label"
+        className={`mt-2.5 ${FIELD_CLASS}`}
       />
 
       {matches.length > 0 && (
-        <div className="mt-1.5 max-h-44 overflow-y-auto rounded-control border border-line">
+        <div className="scroll-area mt-2 max-h-52 overflow-y-auto rounded-card p-1.5 shadow-card">
           {matches.slice(0, 40).map((s) => {
             const linked = value.includes(s.name);
             return (
@@ -106,16 +107,16 @@ export function SkillPicker({
                 key={s.name}
                 type="button"
                 onClick={() => toggle(s.name)}
-                className="flex w-full items-start gap-2 px-2.5 py-1.5 text-left
-                  transition-colors duration-100 hover:bg-hover"
+                className="flex min-h-9 w-full items-start gap-2.5 rounded-control px-2.5 py-1.5
+                  text-left transition-[background-color] duration-150 hover:bg-hover"
               >
-                <span className="mt-px shrink-0 text-ink-3">
-                  {linked ? <IconCheck size={12} /> : <IconPlus size={12} />}
+                <span className="mt-0.5 shrink-0 text-ink-2">
+                  {linked ? <IconCheck size={16} /> : <IconPlus size={16} />}
                 </span>
                 <span className="min-w-0">
-                  <span className="block text-label text-ink">{s.name}</span>
+                  <span className="block text-ui text-ink">{s.name}</span>
                   {s.description && (
-                    <span className="block truncate text-meta text-ink-3">
+                    <span className="block truncate text-label text-ink-3">
                       {s.description}
                     </span>
                   )}

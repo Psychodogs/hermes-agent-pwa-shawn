@@ -2,7 +2,7 @@
 
 import type { SubagentRun } from "@/lib/chat-types";
 import { Meter } from "@/components/ui/Meter";
-import { IconAgent } from "@/components/primitives/icons";
+import { IconAgent, IconCheck } from "@/components/primitives/icons";
 
 /* delegate_task children, from the subagent.start / subagent.complete events
  * on /v1/runs. Hermes deliberately withholds the child's own tool calls and
@@ -45,11 +45,8 @@ function StatusDot({ status }: { status: SubagentRun["status"] }) {
       />
     );
   }
-  return (
-    <span
-      className={`size-2 shrink-0 rounded-full ${status === "failed" ? "bg-red" : "bg-green"}`}
-    />
-  );
+  if (status === "failed") return <span className="size-2 shrink-0 rounded-full bg-red" />;
+  return <IconCheck size={13} className="shrink-0 text-ink-3" />;
 }
 
 function SubagentRow({ run }: { run: SubagentRun }) {
@@ -59,18 +56,18 @@ function SubagentRow({ run }: { run: SubagentRun }) {
 
   return (
     <div
-      className="rounded-card bg-surface px-2.5 py-2 shadow-hairline"
+      className="rounded-card bg-surface px-3.5 py-3 shadow-card"
       style={{ animation: "fade-up var(--duration-medium) var(--ease-out-strong) both" }}
     >
       <div className="flex items-center gap-2">
         <span className="flex size-4 shrink-0 items-center justify-center text-ink-3">
           <IconAgent size={13} />
         </span>
-        <span className="min-w-0 flex-1 truncate text-label text-ink">
+        <span className="min-w-0 flex-1 truncate text-ui text-ink">
           {run.goal || "Subagent"}
         </span>
         {run.model && (
-          <span className="shrink-0 rounded-chip bg-field px-1.5 font-mono text-meta text-ink-3">
+          <span className="shrink-0 rounded-[6px] bg-field px-1.5 font-mono text-meta text-ink-3">
             {run.model}
           </span>
         )}
@@ -107,7 +104,7 @@ function SubagentRow({ run }: { run: SubagentRun }) {
 export function SubagentCards({ subagents }: { subagents: SubagentRun[] }) {
   if (subagents.length === 0) return null;
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-2">
       {subagents.map((run) => (
         <SubagentRow key={run.id} run={run} />
       ))}

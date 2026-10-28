@@ -4,6 +4,14 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { IconCross } from "@/components/primitives/icons";
 import { PROJECT_TEMPLATES } from "@/lib/instructions";
+import {
+  FIELD_CLASS,
+  HELP_CLASS,
+  ICON_BUTTON,
+  LABEL_CLASS,
+  TEXTAREA_CLASS,
+  buttonClass,
+} from "@/components/ui/SettingsControls";
 import { SkillPicker, useSkillCatalogue } from "./SkillPicker";
 
 /* A project is a long-lived thread, not a session — name it once and come
@@ -108,7 +116,7 @@ function NewProjectForm({
         aria-modal="true"
         aria-label="New project"
         onSubmit={create}
-        className="relative w-full max-w-sm overflow-hidden rounded-card bg-surface shadow-overlay"
+        className="relative w-full max-w-md overflow-hidden rounded-[20px] bg-surface shadow-overlay"
         style={{
           animation: "pop-in var(--duration-fast) var(--ease-out-strong) both",
           marginBottom: "max(0px, calc(env(safe-area-inset-bottom) - 4px))",
@@ -116,41 +124,37 @@ function NewProjectForm({
       >
         {/* The form outgrew a phone viewport once skills were added — scroll the
             body and keep the footer actions pinned. */}
-        <div className="primitive-card-pad scroll-area max-h-[70dvh] overflow-y-auto">
-          <div className="flex items-start justify-between gap-3">
-            <span className="text-ui font-medium text-ink">New project</span>
+        <div className="scroll-area max-h-[calc(var(--app-height,100dvh)*0.7)] overflow-y-auto px-5 pt-5 pb-4">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-title font-semibold text-ink">New project</span>
             <button
               type="button"
               aria-label="Close"
               onClick={onClose}
-              className="primitive-icon-button shrink-0 text-ink-3 transition-colors duration-100 hover:bg-hover hover:text-ink"
+              className={`${ICON_BUTTON} -mr-2`}
             >
-              <IconCross size={14} />
+              <IconCross size={16} />
             </button>
           </div>
 
-          <div className="mt-3 flex flex-col gap-2">
+          <div className="mt-4 flex flex-col gap-3">
             <input
               ref={inputRef}
               value={name}
               onChange={(event) => setName(event.target.value)}
               placeholder="Project name"
               aria-label="Project name"
-              className="h-9 w-full rounded-control border border-line bg-field px-2.5 text-input
-                text-ink outline-none transition-colors duration-150 placeholder:text-ink-3
-                focus:border-line-strong sm:text-ui"
+              className={FIELD_CLASS}
             />
             <input
               value={cwd}
               onChange={(event) => setCwd(event.target.value)}
               placeholder="Working directory (optional)"
               aria-label="Working directory"
-              className="h-9 w-full rounded-control border border-line bg-field px-2.5 font-mono
-                text-input text-ink outline-none transition-colors duration-150
-                placeholder:text-ink-3 focus:border-line-strong sm:text-label"
+              className={`${FIELD_CLASS} font-mono`}
             />
 
-            <div className="flex flex-wrap gap-1.5 pt-0.5" role="group" aria-label="Template">
+            <div className="flex flex-wrap gap-2" role="group" aria-label="Template">
               {PROJECT_TEMPLATES.map((t) => {
                 const active = t.id === templateId;
                 return (
@@ -169,12 +173,12 @@ function NewProjectForm({
                       }
                       if (!name.trim() && t.id !== "blank") setName(t.label);
                     }}
-                    className="h-7 rounded-chip border px-2 text-label transition-colors duration-100"
-                    style={{
-                      borderColor: active ? "var(--ink)" : "var(--line)",
-                      background: active ? "var(--ink)" : "transparent",
-                      color: active ? "var(--surface)" : "var(--ink-2)",
-                    }}
+                    className={`h-8 rounded-full px-3 text-label transition-[transform,background-color,color]
+                      duration-150 active:scale-[0.97] ${
+                        active
+                          ? "bg-ink font-medium text-page"
+                          : "bg-field text-ink-2 hover:text-ink"
+                      }`}
                   >
                     {t.emoji} {t.label}
                   </button>
@@ -188,46 +192,34 @@ function NewProjectForm({
               rows={4}
               placeholder="Standing instructions — sent with every message in this project"
               aria-label="Project instructions"
-              className="w-full resize-y rounded-control border border-line bg-field px-2.5 py-2
-                text-input leading-relaxed text-ink outline-none transition-colors duration-150
-                placeholder:text-ink-3 focus:border-line-strong sm:text-label"
+              className={TEXTAREA_CLASS}
             />
-            <p className="text-meta leading-snug text-ink-3">
+            <p className={HELP_CLASS}>
               Re-sent on every turn, so it survives context compaction instead of
               scrolling away like a pinned message. Editable later.
             </p>
 
-            <div className="pt-0.5">
-              <span className="text-label font-medium text-ink">Linked skills</span>
+            <div className="mt-1">
+              <span className={LABEL_CLASS}>Linked skills</span>
               <SkillPicker value={skills} onChange={setSkills} catalogue={catalogue} />
             </div>
           </div>
 
           {error && (
-            <p className="mt-2 text-label text-red" style={{ animation: "fade-in 150ms ease-out both" }}>
+            <p className="mt-3 text-label text-red" style={{ animation: "fade-in 150ms ease-out both" }}>
               {error}
             </p>
           )}
         </div>
 
-        <div className="primitive-card-footer flex items-center justify-end gap-2 border-t border-line">
-          <button
-            type="button"
-            onClick={onClose}
-            className="h-8 rounded-control px-2.5 text-label font-medium text-ink-2
-              transition-colors duration-100 hover:bg-hover hover:text-ink"
-          >
+        <div className="flex items-center justify-end gap-2 border-t border-line px-5 py-4">
+          <button type="button" onClick={onClose} className={buttonClass("secondary")}>
             Cancel
           </button>
           <button
             type="submit"
             disabled={!name.trim() || busy}
-            className="h-8 rounded-control px-3 text-label font-medium
-              transition-[background-color,color,transform] duration-200 enabled:active:scale-[0.98]"
-            style={{
-              background: name.trim() && !busy ? "var(--ink)" : "var(--line-strong)",
-              color: name.trim() && !busy ? "var(--surface)" : "var(--ink-2)",
-            }}
+            className={buttonClass("primary")}
           >
             {busy ? "Creating…" : "Create"}
           </button>

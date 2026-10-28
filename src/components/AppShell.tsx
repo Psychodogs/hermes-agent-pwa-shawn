@@ -157,7 +157,7 @@ export function AppShell({
             }}
           />
           <div className="flex min-w-0 flex-1 flex-col">
-            {/* The inset is padding on the bar, and the 56px row is a child of it.
+            {/* The inset is padding on the bar, and the 52px row is a child of it.
              * Putting both on one element (a fixed height + padding-top: 59px)
              * collapses the content box to zero and the title spills out over the
              * thread — which is exactly what it did. */}
@@ -165,36 +165,43 @@ export function AppShell({
               {/* Three columns rather than a flex row, so the title stays
                * optically centred on the bar and doesn't shift with the width of
                * whatever sits either side of it. */}
-              <div className="grid h-14 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-1 px-1.5">
-                <div className="flex size-9 items-center justify-center">
+              <div className="grid h-13 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-1 px-1.5 lg:grid-cols-[minmax(0,1fr)_auto] lg:px-2">
+                <div className="flex size-10 items-center justify-center lg:hidden">
                   <button
                     type="button"
                     aria-label="Open projects and sessions"
                     onClick={() => setSidebarOpen(true)}
-                    className="tap-target grid size-9 place-items-center rounded-control text-ink-2 hover:bg-hover-2 lg:invisible"
+                    className="tap-target grid size-10 place-items-center rounded-control text-ink-2 transition-[color,background-color,transform] duration-150 hover:bg-hover hover:text-ink active:scale-[0.96]"
                   >
-                    <IconMenu size={17} />
+                    <IconMenu size={20} />
                   </button>
                 </div>
 
                 {/* Project first, then the chat: on a phone the project is the
                   * thing you lose track of. The chat name gives way first. */}
-                <div className="flex min-w-0 items-center justify-center gap-2 px-3">
+                {/* Centred on a phone, the way a native title bar sits; at the
+                  * left on a desktop, where the sidebar is already the anchor. */}
+                <div className="flex min-w-0 items-center justify-center gap-2 px-3 lg:justify-start">
                   <RunDot />
-                  <h1 className="flex min-w-0 items-baseline gap-1.5 text-ui font-semibold text-ink">
-                    {/* A project's first chat is named after it; saying it twice is noise. */}
-                    {activeProject && sessionTitle && sessionTitle !== activeProject.name ? (
-                      <>
-                        <span className="min-w-0 max-w-[60%] truncate">{activeProject.name}</span>
-                        <span aria-hidden className="text-ink-3">·</span>
-                        <span className="min-w-0 shrink-[4] truncate font-medium text-ink-2">
-                          {sessionTitle}
-                        </span>
-                      </>
-                    ) : (
+                  {/* A project's first chat is named after it; saying it twice is noise.
+                    * With both names, a phone stacks them — project over chat —
+                    * rather than cutting two halves off side by side; from `sm`
+                    * there is room to set them on one line. */}
+                  {activeProject && sessionTitle && sessionTitle !== activeProject.name ? (
+                    <h1 className="flex min-w-0 flex-col items-center font-semibold text-ink sm:flex-row sm:items-baseline sm:gap-1.5">
+                      <span className="max-w-full min-w-0 truncate text-ui leading-tight sm:max-w-[60%] sm:text-title">
+                        {activeProject.name}
+                      </span>
+                      <span aria-hidden className="hidden text-title text-ink-3 sm:inline">·</span>
+                      <span className="max-w-full min-w-0 shrink-[4] truncate text-meta leading-tight font-medium text-ink-2 sm:text-title">
+                        {sessionTitle}
+                      </span>
+                    </h1>
+                  ) : (
+                    <h1 className="flex min-w-0 items-baseline text-title font-semibold text-ink">
                       <span className="truncate">{activeProject?.name ?? title}</span>
-                    )}
-                  </h1>
+                    </h1>
+                  )}
                 </div>
 
                 <div className="flex items-center">
@@ -210,10 +217,10 @@ export function AppShell({
                     onClick={() =>
                       activeProject ? setNewChatOpen(true) : setDialogOpen(true)
                     }
-                    className="tap-target flex size-9 items-center justify-center rounded-control text-ink-2
-                    transition-colors duration-100 hover:bg-hover-2 hover:text-ink active:scale-[0.96]"
+                    className="tap-target flex size-10 items-center justify-center rounded-control text-ink-2
+                    transition-[color,background-color,transform] duration-150 hover:bg-hover hover:text-ink active:scale-[0.96]"
                   >
-                    <IconEdit size={17} />
+                    <IconEdit size={20} />
                   </button>
                 </div>
               </div>

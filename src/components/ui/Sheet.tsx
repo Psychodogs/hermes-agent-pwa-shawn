@@ -39,7 +39,7 @@ export function Sheet({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50">
+    <div className="h-app fixed inset-x-0 top-0 z-50">
       <button
         type="button"
         aria-label="Close menu"
@@ -51,9 +51,9 @@ export function Sheet({
         role="dialog"
         aria-modal="true"
         aria-label={label}
-        className="absolute inset-y-0 left-0 flex w-[264px] max-w-[85vw] flex-col overflow-y-auto overscroll-contain bg-canvas shadow-overlay scroll-area sm:w-[380px]"
+        className="scroll-area absolute inset-y-0 left-0 flex w-[88vw] max-w-[420px] flex-col overflow-y-auto overscroll-contain bg-canvas shadow-overlay"
         style={{
-          animation: "panel-in-right var(--duration-fast) var(--ease-smooth-out) both",
+          animation: "panel-in-right var(--duration-fast) var(--ease-out-strong) both",
           // the panel spans the full height including the notch, so it owns
           // both insets — without the top one the workspace row sits under
           // the status bar

@@ -97,7 +97,7 @@ export function ThinkingTrace({
       </button>
 
       <div
-        className="grid transition-[grid-template-rows,opacity] duration-400"
+        className="grid transition-[grid-template-rows,opacity] duration-300"
         style={{
           gridTemplateRows: expanded ? "1fr" : "0fr",
           opacity: expanded ? 1 : 0,

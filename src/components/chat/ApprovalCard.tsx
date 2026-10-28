@@ -48,15 +48,15 @@ export function ApprovalCard({
       }`}
       style={{ animation: "pop-in var(--duration-fast) var(--ease-out-strong) both" }}
     >
-      <div className="primitive-card-pad">
+      <div className="p-4">
         <div className="flex items-start justify-between gap-3">
-          <span className="text-ui font-medium text-ink">
+          <span className="text-ui font-semibold text-balance text-ink">
             {approval.smartDenied
               ? `${agentName} was blocked and is asking you to override`
               : `${agentName} wants to run something`}
           </span>
           <span
-            className={`shrink-0 rounded-chip px-1.5 py-0.5 text-meta font-medium ${
+            className={`shrink-0 rounded-full px-2 py-0.5 text-meta font-medium ${
               approval.smartDenied
                 ? "bg-red text-white"
                 : "bg-orange-tint text-orange"
@@ -67,27 +67,27 @@ export function ApprovalCard({
         </div>
 
         {approval.description && (
-          <p className="mt-1.5 text-ui leading-[1.5] text-ink-2 [overflow-wrap:anywhere]">
+          <p className="mt-2 text-ui leading-[1.55] text-ink-2 [overflow-wrap:anywhere]">
             {approval.description}
           </p>
         )}
 
         {approval.command && (
-          <pre className="mt-2 max-h-40 overflow-auto rounded-control bg-inset px-2.5 py-2 font-mono text-meta leading-[1.7] whitespace-pre-wrap text-ink-2 [overflow-wrap:anywhere]">
+          <pre className="scroll-area mt-3 max-h-40 overflow-auto rounded-control bg-inset px-3 py-2.5 font-mono text-label leading-[1.6] whitespace-pre-wrap text-ink shadow-hairline [overflow-wrap:anywhere]">
             {approval.command}
           </pre>
         )}
 
         {persists && (
-          <p className="mt-2 flex flex-wrap items-baseline gap-1.5 text-meta text-ink-3">
+          <p className="mt-2.5 flex flex-wrap items-baseline gap-1.5 text-label text-ink-3">
             <span>&ldquo;Always&rdquo; remembers</span>
-            <span className="rounded-chip bg-field px-1.5 py-0.5 font-mono text-meta text-ink-2 [overflow-wrap:anywhere]">
+            <span className="rounded-[6px] bg-field px-1.5 py-0.5 font-mono text-meta text-ink-2 [overflow-wrap:anywhere]">
               {approval.patternKey}
             </span>
           </p>
         )}
 
-        <div className="mt-2 flex flex-col gap-0.5">
+        <div className="mt-3 flex flex-col gap-0.5">
           {rendered.map((choice) => {
             const copy = CHOICE_COPY[choice] ?? { label: choice, hint: "" };
             const deny = choice === "deny";
@@ -96,8 +96,8 @@ export function ApprovalCard({
                 key={choice}
                 type="button"
                 onClick={() => onRespond(choice, all)}
-                className="-mx-1.5 flex w-[calc(100%+12px)] items-center gap-2 rounded-control px-1.5 py-1.5
-                  text-left transition-colors duration-100 hover:bg-hover active:scale-[0.99]"
+                className="-mx-2 flex min-h-10 w-[calc(100%+16px)] items-center gap-2.5 rounded-control px-2 py-1.5
+                  text-left transition-[background-color,transform] duration-150 hover:bg-hover active:scale-[0.99]"
               >
                 <span
                   className={`flex size-5 shrink-0 items-center justify-center rounded-full text-white ${
@@ -107,7 +107,7 @@ export function ApprovalCard({
                   {deny ? <IconCross size={11} strokeWidth={3} /> : <IconCheck size={12} strokeWidth={3} />}
                 </span>
                 <span className="text-ui font-medium text-ink">{copy.label}</span>
-                <span className="ml-auto text-meta text-ink-3">{copy.hint}</span>
+                <span className="ml-auto text-label text-ink-3">{copy.hint}</span>
               </button>
             );
           })}
@@ -117,8 +117,8 @@ export function ApprovalCard({
           type="button"
           onClick={() => setAll((v) => !v)}
           aria-pressed={all}
-          className="-mx-1.5 mt-1 flex w-[calc(100%+12px)] items-center gap-2 rounded-control px-1.5 py-1.5
-            text-left transition-colors duration-100 hover:bg-hover-2 active:scale-[0.99]"
+          className="-mx-2 mt-1 flex min-h-10 w-[calc(100%+16px)] items-center gap-2.5 rounded-control px-2 py-1.5
+            text-left transition-[background-color,transform] duration-150 hover:bg-hover active:scale-[0.99]"
         >
           <span
             className={`flex size-4 shrink-0 items-center justify-center rounded-[4px] border transition-colors duration-100 ${
@@ -127,7 +127,7 @@ export function ApprovalCard({
           >
             <IconCheck size={10} strokeWidth={3} />
           </span>
-          <span className="text-meta text-ink-2">
+          <span className="text-label text-ink-2">
             Apply to every approval waiting on this turn
           </span>
         </button>

@@ -40,7 +40,7 @@ export function Meter({
         </div>
       )}
       <div
-        className="h-1 w-full overflow-hidden rounded-chip bg-line"
+        className="h-1 w-full overflow-hidden rounded-full bg-field"
         role="progressbar"
         aria-valuenow={pct}
         aria-valuemin={0}
@@ -48,7 +48,7 @@ export function Meter({
         aria-label={label ?? "progress"}
       >
         <div
-          className="h-full rounded-chip transition-[width] duration-300"
+          className="h-full rounded-full transition-[width] duration-300"
           style={{
             width: `${pct}%`,
             background: colour,

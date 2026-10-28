@@ -8,13 +8,13 @@ export function EmptyState() {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
-      <span className="flex size-9 items-center justify-center rounded-control bg-inset text-ink-3 shadow-hairline">
-        <IconSparkle size={17} />
+    <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
+      <span className="flex size-11 items-center justify-center rounded-full bg-surface text-ink-2 shadow-card">
+        <IconSparkle size={20} />
       </span>
-      <div className="flex flex-col gap-1">
-        <span className="text-ui font-medium text-ink">No projects yet</span>
-        <span className="max-w-xs text-label text-ink-3">
+      <div className="flex flex-col gap-2">
+        <h2 className="text-[24px] leading-tight font-semibold text-balance text-ink">No projects yet</h2>
+        <span className="max-w-sm text-ui text-balance text-ink-2">
           A project is one durable thread — same conversation next week, next
           month. Start with the thing you keep coming back to.
         </span>
@@ -22,11 +22,10 @@ export function EmptyState() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="mt-1 flex h-8 items-center gap-1.5 rounded-control px-3 text-label font-medium
-          transition-[background-color,transform] duration-200 active:scale-[0.98]"
-        style={{ background: "var(--ink)", color: "var(--surface)" }}
+        className="mt-2 flex h-10 items-center gap-2 rounded-full bg-ink px-4 text-ui font-medium text-page
+          transition-transform duration-150 active:scale-[0.97]"
       >
-        <IconPlus size={14} />
+        <IconPlus size={16} />
         New project
       </button>
 

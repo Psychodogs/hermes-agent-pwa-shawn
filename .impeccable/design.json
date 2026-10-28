@@ -1,0 +1,565 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-28T11:44:54Z",
+  "title": "Design System: Hermes PWA",
+  "extensions": {
+    "colorMeta": {
+      "dark-page": {
+        "role": "neutral",
+        "displayName": "Page Grey (dark)",
+        "canonical": "#212121",
+        "tonalRamp": [
+          "#181818",
+          "#1b1b1b",
+          "#212121",
+          "#303030",
+          "#3c3c3c",
+          "#9b9b9b",
+          "#b4b4b4",
+          "#ececec"
+        ]
+      },
+      "dark-sidebar": {
+        "role": "neutral",
+        "displayName": "Sidebar Grey (dark)",
+        "canonical": "#181818",
+        "tonalRamp": [
+          "#181818",
+          "#1b1b1b",
+          "#212121",
+          "#303030",
+          "#3c3c3c",
+          "#9b9b9b",
+          "#b4b4b4",
+          "#ececec"
+        ]
+      },
+      "dark-raised": {
+        "role": "neutral",
+        "displayName": "Raised Grey (dark)",
+        "canonical": "#303030",
+        "tonalRamp": [
+          "#181818",
+          "#1b1b1b",
+          "#212121",
+          "#303030",
+          "#3c3c3c",
+          "#9b9b9b",
+          "#b4b4b4",
+          "#ececec"
+        ]
+      },
+      "dark-inset": {
+        "role": "neutral",
+        "displayName": "Inset Grey (dark)",
+        "canonical": "#1b1b1b"
+      },
+      "dark-field": {
+        "role": "neutral",
+        "displayName": "Field Grey (dark)",
+        "canonical": "#3c3c3c"
+      },
+      "dark-ink": {
+        "role": "primary",
+        "displayName": "Ink as Accent (dark)",
+        "canonical": "#ececec",
+        "tonalRamp": [
+          "#303030",
+          "#3c3c3c",
+          "#9b9b9b",
+          "#b4b4b4",
+          "#ececec"
+        ]
+      },
+      "dark-ink-2": {
+        "role": "neutral",
+        "displayName": "Secondary Ink (dark)",
+        "canonical": "#b4b4b4"
+      },
+      "dark-ink-3": {
+        "role": "neutral",
+        "displayName": "Tertiary Ink (dark)",
+        "canonical": "#9b9b9b"
+      },
+      "dark-orange": {
+        "role": "secondary",
+        "displayName": "Waiting Orange (dark)",
+        "canonical": "oklch(77% 0.14 62)",
+        "tonalRamp": [
+          "oklch(25% 0.04 62)",
+          "oklch(35% 0.07 62)",
+          "oklch(45% 0.1 62)",
+          "oklch(55% 0.13 62)",
+          "oklch(65% 0.15 62)",
+          "oklch(77% 0.14 62)",
+          "oklch(87% 0.08 62)",
+          "oklch(95% 0.03 62)"
+        ]
+      },
+      "dark-red": {
+        "role": "tertiary",
+        "displayName": "Failure Red (dark)",
+        "canonical": "oklch(68% 0.17 24)",
+        "tonalRamp": [
+          "oklch(25% 0.06 24)",
+          "oklch(35% 0.1 24)",
+          "oklch(45% 0.14 24)",
+          "oklch(55% 0.17 24)",
+          "oklch(68% 0.17 24)",
+          "oklch(78% 0.12 24)",
+          "oklch(88% 0.06 24)",
+          "oklch(95% 0.025 24)"
+        ]
+      },
+      "dark-green": {
+        "role": "tertiary",
+        "displayName": "Affirmative Green (dark)",
+        "canonical": "oklch(72% 0.15 152)",
+        "tonalRamp": [
+          "oklch(25% 0.05 152)",
+          "oklch(35% 0.08 152)",
+          "oklch(45% 0.11 152)",
+          "oklch(55% 0.13 152)",
+          "oklch(65% 0.15 152)",
+          "oklch(72% 0.15 152)",
+          "oklch(85% 0.09 152)",
+          "oklch(95% 0.03 152)"
+        ]
+      },
+      "light-page": {
+        "role": "neutral",
+        "displayName": "Page White (light)",
+        "canonical": "#ffffff",
+        "tonalRamp": [
+          "#0d0d0d",
+          "#5d5d5d",
+          "#737373",
+          "#f0f0f0",
+          "#f4f4f4",
+          "#f9f9f9",
+          "#ffffff"
+        ]
+      },
+      "light-sidebar": {
+        "role": "neutral",
+        "displayName": "Sidebar Off-White (light)",
+        "canonical": "#f9f9f9"
+      },
+      "light-bubble": {
+        "role": "neutral",
+        "displayName": "Bubble Grey (light)",
+        "canonical": "#f4f4f4"
+      },
+      "light-field": {
+        "role": "neutral",
+        "displayName": "Field Grey (light)",
+        "canonical": "#f0f0f0"
+      },
+      "light-ink": {
+        "role": "primary",
+        "displayName": "Ink as Accent (light)",
+        "canonical": "#0d0d0d",
+        "tonalRamp": [
+          "#0d0d0d",
+          "#5d5d5d",
+          "#737373",
+          "#f0f0f0",
+          "#f4f4f4",
+          "#f9f9f9",
+          "#ffffff"
+        ]
+      },
+      "light-ink-2": {
+        "role": "neutral",
+        "displayName": "Secondary Ink (light)",
+        "canonical": "#5d5d5d"
+      },
+      "light-ink-3": {
+        "role": "neutral",
+        "displayName": "Tertiary Ink (light)",
+        "canonical": "#737373"
+      },
+      "light-orange": {
+        "role": "secondary",
+        "displayName": "Waiting Orange (light)",
+        "canonical": "oklch(62% 0.16 55)",
+        "tonalRamp": [
+          "oklch(25% 0.05 55)",
+          "oklch(35% 0.09 55)",
+          "oklch(45% 0.12 55)",
+          "oklch(55% 0.15 55)",
+          "oklch(62% 0.16 55)",
+          "oklch(75% 0.12 55)",
+          "oklch(88% 0.06 60)",
+          "oklch(96% 0.035 70)"
+        ]
+      },
+      "light-red": {
+        "role": "tertiary",
+        "displayName": "Failure Red (light)",
+        "canonical": "oklch(57% 0.2 25)",
+        "tonalRamp": [
+          "oklch(25% 0.07 25)",
+          "oklch(35% 0.11 25)",
+          "oklch(45% 0.16 25)",
+          "oklch(57% 0.2 25)",
+          "oklch(68% 0.16 25)",
+          "oklch(80% 0.1 25)",
+          "oklch(90% 0.05 22)",
+          "oklch(95.5% 0.025 20)"
+        ]
+      },
+      "light-green": {
+        "role": "tertiary",
+        "displayName": "Affirmative Green (light)",
+        "canonical": "oklch(56% 0.14 152)",
+        "tonalRamp": [
+          "oklch(25% 0.05 152)",
+          "oklch(35% 0.08 152)",
+          "oklch(45% 0.11 152)",
+          "oklch(56% 0.14 152)",
+          "oklch(68% 0.13 152)",
+          "oklch(80% 0.09 152)",
+          "oklch(90% 0.05 154)",
+          "oklch(95.5% 0.03 155)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "micro": {
+        "displayName": "Micro",
+        "purpose": "The queue ring numeral only. 11px at 600."
+      },
+      "meta": {
+        "displayName": "Meta",
+        "purpose": "Timestamps, counts, badges, hints. 12px; tabular figures where numbers tick."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Secondary lines, hints, speaker label, composer chips, segmented options, sidebar dividers. 13px at 500."
+      },
+      "ui": {
+        "displayName": "UI",
+        "purpose": "Chrome: rows, buttons, table cells, settings titles, the phone header title. 14px."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Assistant prose and markdown. 16px at 1.7; 1.75 from the sm breakpoint."
+      },
+      "body-wide": {
+        "displayName": "Body (wide)",
+        "purpose": "The same 16px body from 640px up, at line-height 1.75."
+      },
+      "user-message": {
+        "displayName": "User message",
+        "purpose": "The user bubble. 16px at 1.55, tighter because it is short."
+      },
+      "input": {
+        "displayName": "Input",
+        "purpose": "Every focusable text field. 16px floor (max(16px, 16px x font-scale)) so iOS never zooms."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Header title from sm, dialog titles, sidebar wordmark. 17px at 600."
+      },
+      "code": {
+        "displayName": "Code",
+        "purpose": "Code blocks, tool names, paths and values. System mono, 13px at 1.65."
+      }
+    },
+    "shadows": [
+      {
+        "name": "shadow-hairline",
+        "value": "dark: 0 0 0 1px oklch(100% 0 0 / 0.1) | light: 0 0 0 1px oklch(0% 0 0 / 0.1)",
+        "purpose": "A ring and nothing else; image and well edges."
+      },
+      {
+        "name": "shadow-card",
+        "value": "dark: 0 0 0 1px oklch(100% 0 0 / 0.07) | light: 0 0 0 1px oklch(0% 0 0 / 0.1)",
+        "purpose": "Cards, code blocks, queued rows. Ring only."
+      },
+      {
+        "name": "shadow-btn",
+        "value": "dark: 0 0 0 1px oklch(100% 0 0 / 0.1), 0 1px 2px oklch(0% 0 0 / 0.3) | light: 0 0 0 1px oklch(0% 0 0 / 0.16), 0 1px 2px oklch(0% 0 0 / 0.04)",
+        "purpose": "Secondary pill buttons and the active segmented option."
+      },
+      {
+        "name": "shadow-raised",
+        "value": "dark: 0 0 0 1px oklch(100% 0 0 / 0.06), 0 6px 20px -4px oklch(0% 0 0 / 0.35) | light: 0 0 0 1px oklch(0% 0 0 / 0.08), 0 4px 16px -2px oklch(0% 0 0 / 0.06), 0 1px 3px oklch(0% 0 0 / 0.04)",
+        "purpose": "The composer and the jump-to-latest button, floating over the thread."
+      },
+      {
+        "name": "shadow-overlay",
+        "value": "dark: 0 0 0 1px oklch(100% 0 0 / 0.08), 0 14px 36px -6px oklch(0% 0 0 / 0.55), 0 2px 8px oklch(0% 0 0 / 0.25) | light: 0 0 0 1px oklch(0% 0 0 / 0.08), 0 12px 32px -4px oklch(0% 0 0 / 0.14), 0 2px 6px oklch(0% 0 0 / 0.05)",
+        "purpose": "Menus, popovers, dialogs, the drawer, toasts."
+      },
+      {
+        "name": "shadow-inset-field",
+        "value": "inset 0 0 0 1px var(--line); fields use var(--line-strong), var(--ink-3) on focus",
+        "purpose": "Text inputs drawn as an inset ring instead of a border."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-out-strong",
+        "value": "cubic-bezier(0.23, 1, 0.32, 1)",
+        "purpose": "Anything entering: fades, rises, pops, switch knob, disclosure."
+      },
+      {
+        "name": "ease-drawer",
+        "value": "cubic-bezier(0.32, 0.72, 0, 1)",
+        "purpose": "Anything sliding in from an edge (the sidebar drawer)."
+      },
+      {
+        "name": "ease-smooth-out",
+        "value": "cubic-bezier(0.22, 1, 0.36, 1)",
+        "purpose": "The pulsing run dot."
+      },
+      {
+        "name": "ease-link",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "The link underline wipe."
+      },
+      {
+        "name": "duration-micro",
+        "value": "80ms",
+        "purpose": "Defined; near-instant state flips."
+      },
+      {
+        "name": "duration-quick",
+        "value": "150ms",
+        "purpose": "Scrim fades, menu pop-in, control transitions and press scale."
+      },
+      {
+        "name": "duration-fast",
+        "value": "200ms",
+        "purpose": "Cards, dialogs, toasts, the sheet, the switch."
+      },
+      {
+        "name": "duration-medium",
+        "value": "250ms",
+        "purpose": "Turn and row entrances, the drawer."
+      },
+      {
+        "name": "duration-slow",
+        "value": "300ms",
+        "purpose": "Assistant turn fade-up, disclosure expand. The ceiling for anything a person triggers."
+      },
+      {
+        "name": "press-scale",
+        "value": "0.97 buttons; 0.96 to 0.94 small icon and circle controls; 0.98 to 0.99 rows",
+        "purpose": "Active-state feedback; there is no hover movement."
+      },
+      {
+        "name": "keyframes",
+        "value": "fade-up (8px), fade-in, pop-in (0.95 to 1), panel-in-right, toast-in, shake 400ms, caret-blink, pulse-dot, pixel-on, spin",
+        "purpose": "Declared at the top level of globals.css, never inside @theme."
+      },
+      {
+        "name": "reduce-motion",
+        "value": "html[data-reduce-motion=\"1\"] zeroes duration tokens and transition durations",
+        "purpose": "Merged from the in-app switch and the OS setting before first paint."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "lg",
+        "value": "1024px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Ink-on-page pill; the single primary action in a dialog footer or card.",
+      "html": "<button class=\"ds-btn-primary\">Start new chat</button>",
+      "css": ".ds-btn-primary{display:inline-flex;align-items:center;justify-content:center;height:40px;padding:0 16px;border:0;border-radius:9999px;background:var(--ink, #ececec);color:var(--page, #212121);font:500 14px/1.45 ui-sans-serif, -apple-system, system-ui, 'Segoe UI', Helvetica, Arial, sans-serif;white-space:nowrap;cursor:pointer;transition:transform 150ms,opacity 150ms} .ds-btn-primary:hover{opacity:.9} .ds-btn-primary:active{transform:scale(.97)} .ds-btn-primary:focus-visible{outline:2px solid var(--accent, #ececec);outline-offset:2px}"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Ring pill for the quieter action beside a primary; danger variants only change the text to red.",
+      "html": "<button class=\"ds-btn-secondary\">Cancel</button>",
+      "css": ".ds-btn-secondary{display:inline-flex;align-items:center;justify-content:center;height:40px;padding:0 16px;border:0;border-radius:9999px;background:transparent;color:var(--ink, #ececec);box-shadow:0 0 0 1px oklch(100% 0 0 / .1),0 1px 2px oklch(0% 0 0 / .3);font:500 14px/1.45 ui-sans-serif, -apple-system, system-ui, 'Segoe UI', Helvetica, Arial, sans-serif;cursor:pointer;transition:transform 150ms,background-color 150ms} .ds-btn-secondary:hover{background:var(--hover, oklch(100% 0 0 / .06))} .ds-btn-secondary:active{transform:scale(.97)} .ds-btn-secondary:focus-visible{outline:2px solid var(--accent, #ececec);outline-offset:2px}"
+    },
+    {
+      "name": "Composer",
+      "kind": "input",
+      "refersTo": "composer",
+      "description": "The pill: prompt on the first row; attach, model chip, stop beside send on the second.",
+      "html": "<div class=\"ds-composer\"><div class=\"ds-composer-input\">Message Hermes…</div><div class=\"ds-composer-row\"><button class=\"ds-composer-icon\" aria-label=\"Attach a file\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M20.4 11.6 12 20a5 5 0 0 1-7-7l8.6-8.6a3.3 3.3 0 0 1 4.7 4.7l-8.5 8.5a1.7 1.7 0 0 1-2.4-2.4l7.9-7.8\"/></svg></button><button class=\"ds-composer-chip\">claude-sonnet-5-5</button><span class=\"ds-spacer\"></span><button class=\"ds-composer-stop\" aria-label=\"Stop run\"><svg width=\"15\" height=\"15\" viewBox=\"0 0 24 24\" fill=\"currentColor\"><rect x=\"7\" y=\"7\" width=\"10\" height=\"10\" rx=\"2\"/></svg></button><button class=\"ds-composer-send\" aria-label=\"Send\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M12 19V5M5 12l7-7 7 7\"/></svg></button></div></div>",
+      "css": ".ds-composer{display:flex;flex-direction:column;gap:4px;max-width:560px;padding:8px;border-radius:28px;background:var(--surface, #303030);box-shadow:0 0 0 1px oklch(100% 0 0 / .06),0 6px 20px -4px oklch(0% 0 0 / .35);font-family:ui-sans-serif, -apple-system, system-ui, 'Segoe UI', Helvetica, Arial, sans-serif} .ds-composer-input{min-height:40px;padding:8px 10px;color:var(--ink-3, #9b9b9b);font-size:16px;line-height:1.5} .ds-composer-row{display:flex;align-items:center;gap:4px} .ds-spacer{flex:1} .ds-composer-icon,.ds-composer-stop,.ds-composer-send{display:flex;align-items:center;justify-content:center;width:36px;height:36px;border:0;border-radius:9999px;cursor:pointer;transition:transform 150ms,background-color 150ms} .ds-composer-icon{background:transparent;color:var(--ink-2, #b4b4b4)} .ds-composer-icon:hover{background:var(--hover, oklch(100% 0 0 / .06));color:var(--ink, #ececec)} .ds-composer-chip{height:36px;padding:0 10px;border:0;border-radius:9999px;background:transparent;color:var(--ink-2, #b4b4b4);font:400 13px/1.5 ui-sans-serif, -apple-system, system-ui, 'Segoe UI', Helvetica, Arial, sans-serif;cursor:pointer} .ds-composer-chip:hover{background:var(--hover, oklch(100% 0 0 / .06));color:var(--ink, #ececec)} .ds-composer-stop{background:var(--field, #3c3c3c);color:var(--ink, #ececec)} .ds-composer-send{background:var(--ink, #ececec);color:var(--page, #212121)} .ds-composer-icon:active,.ds-composer-stop:active,.ds-composer-send:active{transform:scale(.94)} .ds-composer button:focus-visible{outline:2px solid var(--accent, #ececec);outline-offset:2px}"
+    },
+    {
+      "name": "User Bubble",
+      "kind": "card",
+      "refersTo": "user-bubble",
+      "description": "Right-aligned, 22px radius, raised grey (dark) or #f4f4f4 (light); no outline.",
+      "html": "<div class=\"ds-bubble-wrap\"><div class=\"ds-bubble\">Which of those could we realistically consolidate?</div></div>",
+      "css": ".ds-bubble-wrap{display:flex;justify-content:flex-end;padding-left:40px;max-width:560px} .ds-bubble{max-width:100%;padding:10px 16px;border-radius:22px;background:var(--bubble, #303030);color:var(--ink, #ececec);font:400 16px/1.55 ui-sans-serif, -apple-system, system-ui, 'Segoe UI', Helvetica, Arial, sans-serif;overflow-wrap:anywhere;white-space:pre-wrap}"
+    },
+    {
+      "name": "Assistant Message",
+      "kind": "custom",
+      "refersTo": "assistant-prose",
+      "description": "No bubble: a sentence-case speaker label, then full-width 16px prose, with the quiet action row beneath.",
+      "html": "<div class=\"ds-assistant\"><div class=\"ds-assistant-name\">Hermes</div><p class=\"ds-assistant-body\">Northwind's notice date is <strong>1 November</strong>, the first deadline. I will check the termination clause next.</p><div class=\"ds-assistant-actions\"><button class=\"ds-action\" aria-label=\"Copy message\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"9\" y=\"9\" width=\"12\" height=\"12\" rx=\"2\"/><path d=\"M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1\"/></svg></button><span class=\"ds-time\">9:08 AM</span></div></div>",
+      "css": ".ds-assistant{display:flex;flex-direction:column;gap:6px;max-width:560px;font-family:ui-sans-serif, -apple-system, system-ui, 'Segoe UI', Helvetica, Arial, sans-serif} .ds-assistant-name{font-size:13px;font-weight:600;line-height:1.5;color:var(--ink-2, #b4b4b4)} .ds-assistant-body{margin:0;font-size:16px;line-height:1.7;color:var(--ink, #ececec)} .ds-assistant-body strong{font-weight:600} .ds-assistant-actions{display:flex;align-items:center;gap:2px;margin-left:-8px} .ds-action{display:flex;align-items:center;justify-content:center;height:32px;min-width:32px;border:0;border-radius:10px;background:transparent;color:var(--ink-2, #b4b4b4);cursor:pointer;transition:transform 150ms,background-color 150ms,color 150ms} .ds-action:hover{background:var(--hover, oklch(100% 0 0 / .06));color:var(--ink, #ececec)} .ds-action:active{transform:scale(.97)} .ds-action:focus-visible{outline:2px solid var(--accent, #ececec);outline-offset:2px} .ds-time{padding:0 8px;font-size:12px;line-height:1.5;color:var(--ink-3, #9b9b9b);font-variant-numeric:tabular-nums}"
+    },
+    {
+      "name": "Sidebar Row",
+      "kind": "nav",
+      "refersTo": "sidebar-row",
+      "description": "36px project or chat row on the darker sidebar; the active chat takes a hover-2 wash.",
+      "html": "<nav class=\"ds-side\"><button class=\"ds-row\">Q4 2026 vendor consolidation</button><button class=\"ds-row ds-row-active\">Tighter intro (branch)</button><button class=\"ds-row\">Groceries &amp; meal plan</button></nav>",
+      "css": ".ds-side{display:flex;flex-direction:column;gap:2px;width:240px;padding:8px;background:var(--canvas, #181818);font-family:ui-sans-serif, -apple-system, system-ui, 'Segoe UI', Helvetica, Arial, sans-serif} .ds-row{display:flex;align-items:center;min-height:36px;padding:0 10px;border:0;border-radius:10px;background:transparent;color:var(--ink-2, #b4b4b4);font-size:14px;line-height:1.45;text-align:left;cursor:pointer;transition:background-color 150ms,color 150ms,transform 150ms} .ds-row:hover{background:var(--hover, oklch(100% 0 0 / .06));color:var(--ink, #ececec)} .ds-row-active{background:var(--hover-2, oklch(100% 0 0 / .1));color:var(--ink, #ececec)} .ds-row:active{transform:scale(.98)} .ds-row:focus-visible{outline:2px solid var(--accent, #ececec);outline-offset:2px}"
+    },
+    {
+      "name": "Menu",
+      "kind": "custom",
+      "refersTo": "popover",
+      "description": "Popover from its trigger: raised, 16px radius, 6px padding, overlay shadow, 36px items with a 12px right hint.",
+      "html": "<div class=\"ds-menu\" role=\"menu\"><button class=\"ds-menu-item\" role=\"menuitem\">Pin to top</button><button class=\"ds-menu-item\" role=\"menuitem\">Edit project<span class=\"ds-hint\">E</span></button><div class=\"ds-sep\" role=\"separator\"></div><button class=\"ds-menu-item ds-danger\" role=\"menuitem\">Delete</button></div>",
+      "css": ".ds-menu{min-width:216px;padding:6px;border-radius:16px;background:var(--surface, #303030);box-shadow:0 0 0 1px oklch(100% 0 0 / .08),0 14px 36px -6px oklch(0% 0 0 / .55),0 2px 8px oklch(0% 0 0 / .25);font-family:ui-sans-serif, -apple-system, system-ui, 'Segoe UI', Helvetica, Arial, sans-serif} .ds-menu-item{display:flex;align-items:center;width:100%;min-height:36px;padding:0 10px;border:0;border-radius:10px;background:transparent;color:var(--ink, #ececec);font-size:14px;line-height:1.45;text-align:left;cursor:pointer;transition:background-color 150ms,transform 150ms} .ds-menu-item:hover,.ds-menu-item:focus-visible{background:var(--hover, oklch(100% 0 0 / .06));outline:none} .ds-menu-item:active{transform:scale(.98)} .ds-hint{margin-left:auto;padding-left:12px;color:var(--ink-3, #9b9b9b);font-size:12px} .ds-danger{color:var(--red, oklch(68% 0.17 24))} .ds-sep{height:1px;margin:4px;background:var(--line, oklch(100% 0 0 / .1))}"
+    },
+    {
+      "name": "Approval Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Run is blocked on the reader: orange Waiting badge, mono command well, 40px choice rows. Blocked state flips the card to red-tint.",
+      "html": "<div class=\"ds-approval\"><div class=\"ds-approval-head\"><span class=\"ds-approval-title\">Hermes wants to run something</span><span class=\"ds-badge\">Waiting</span></div><p class=\"ds-approval-desc\">Restart the immich-machine-learning container.</p><pre class=\"ds-approval-cmd\">docker compose restart immich-machine-learning</pre><button class=\"ds-choice\"><span class=\"ds-choice-glyph\"><svg width=\"12\" height=\"12\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M20 6L9 17l-5-5\"/></svg></span><span class=\"ds-choice-label\">Allow once</span><span class=\"ds-choice-hint\">This call only</span></button><button class=\"ds-choice\"><span class=\"ds-choice-glyph ds-choice-deny\"><svg width=\"11\" height=\"11\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M18 6 6 18M6 6l12 12\"/></svg></span><span class=\"ds-choice-label\">Deny</span><span class=\"ds-choice-hint\">Refuse and continue</span></button></div>",
+      "css": ".ds-approval{max-width:560px;padding:16px;border-radius:16px;background:var(--surface, #303030);box-shadow:0 0 0 1px oklch(100% 0 0 / .07);font-family:ui-sans-serif, -apple-system, system-ui, 'Segoe UI', Helvetica, Arial, sans-serif;color:var(--ink, #ececec)} .ds-approval-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px} .ds-approval-title{font-size:14px;font-weight:600;line-height:1.45} .ds-badge{flex:none;padding:2px 8px;border-radius:9999px;background:var(--orange-tint, oklch(77% 0.14 62 / .14));color:var(--orange, oklch(77% 0.14 62));font-size:12px;font-weight:500;line-height:1.5} .ds-approval-desc{margin:8px 0 0;color:var(--ink-2, #b4b4b4);font-size:14px;line-height:1.55} .ds-approval-cmd{margin:12px 0 0;padding:10px 12px;border-radius:10px;background:var(--inset, #1b1b1b);box-shadow:0 0 0 1px var(--line, oklch(100% 0 0 / .1));font:400 13px/1.6 ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;white-space:pre-wrap;overflow-wrap:anywhere} .ds-choice{display:flex;align-items:center;gap:10px;width:calc(100% + 16px);min-height:40px;margin:2px -8px 0;padding:6px 8px;border:0;border-radius:10px;background:transparent;color:inherit;text-align:left;cursor:pointer;transition:background-color 150ms,transform 150ms} .ds-approval-cmd + .ds-choice{margin-top:12px} .ds-choice:hover{background:var(--hover, oklch(100% 0 0 / .06))} .ds-choice:active{transform:scale(.99)} .ds-choice:focus-visible{outline:2px solid var(--accent, #ececec);outline-offset:2px} .ds-choice-glyph{display:flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:9999px;background:var(--green, oklch(72% 0.15 152));color:#fff} .ds-choice-deny{background:var(--red, oklch(68% 0.17 24))} .ds-choice-label{font-size:14px;font-weight:500} .ds-choice-hint{margin-left:auto;color:var(--ink-3, #9b9b9b);font-size:13px}"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "field",
+      "description": "40px, 10px radius, transparent, drawn as an inset ring that shifts to ink-3 on focus; 16px so iOS never zooms.",
+      "html": "<input class=\"ds-field\" placeholder=\"Project name\" aria-label=\"Project name\">",
+      "css": ".ds-field{box-sizing:border-box;width:100%;max-width:320px;height:40px;padding:0 12px;border:0;border-radius:10px;background:transparent;color:var(--ink, #ececec);box-shadow:inset 0 0 0 1px var(--line-strong, oklch(100% 0 0 / .16));font:400 16px/1.5 ui-sans-serif, -apple-system, system-ui, 'Segoe UI', Helvetica, Arial, sans-serif;outline:none;transition:box-shadow 150ms} .ds-field::placeholder{color:var(--ink-3, #9b9b9b)} .ds-field:focus{box-shadow:inset 0 0 0 1px var(--ink-3, #9b9b9b)}"
+    },
+    {
+      "name": "Segmented Control",
+      "kind": "custom",
+      "refersTo": "segmented",
+      "description": "Full-radius field track; the active option is raised (hover-2 in dark, page in light).",
+      "html": "<div class=\"ds-seg\" role=\"radiogroup\" aria-label=\"Theme\"><button class=\"ds-seg-opt\" role=\"radio\" aria-checked=\"false\">System</button><button class=\"ds-seg-opt\" role=\"radio\" aria-checked=\"false\">Light</button><button class=\"ds-seg-opt ds-seg-on\" role=\"radio\" aria-checked=\"true\">Dark</button></div>",
+      "css": ".ds-seg{display:flex;gap:2px;width:288px;padding:2px;border-radius:9999px;background:var(--field, #3c3c3c)} .ds-seg-opt{flex:1;height:32px;padding:0 8px;border:0;border-radius:9999px;background:transparent;color:var(--ink-2, #b4b4b4);font:400 13px/1.5 ui-sans-serif, -apple-system, system-ui, 'Segoe UI', Helvetica, Arial, sans-serif;cursor:pointer;transition:background-color 150ms,color 150ms,transform 150ms} .ds-seg-opt:hover{color:var(--ink, #ececec)} .ds-seg-opt:active{transform:scale(.97)} .ds-seg-on{background:var(--hover-2, oklch(100% 0 0 / .1));color:var(--ink, #ececec);font-weight:500;box-shadow:0 0 0 1px oklch(100% 0 0 / .1),0 1px 2px oklch(0% 0 0 / .3)} .ds-seg-opt:focus-visible{outline:2px solid var(--accent, #ececec);outline-offset:2px}"
+    },
+    {
+      "name": "Switch",
+      "kind": "custom",
+      "refersTo": "switch",
+      "description": "44 x 26 pill; on is an ink track with a page-colour knob, off a line-strong track with a white knob.",
+      "html": "<button class=\"ds-switch ds-switch-on\" role=\"switch\" aria-checked=\"true\" aria-label=\"Haptics\"><span class=\"ds-knob\"></span></button>",
+      "css": ".ds-switch{position:relative;display:block;width:44px;height:26px;padding:0;border:0;border-radius:9999px;background:var(--line-strong, oklch(100% 0 0 / .16));cursor:pointer;transition:background-color 200ms} .ds-knob{position:absolute;top:2px;left:2px;width:22px;height:22px;border-radius:9999px;background:#fff;box-shadow:0 1px 3px oklch(0% 0 0 / .3);transition:transform 200ms cubic-bezier(.23,1,.32,1),background-color 200ms} .ds-switch-on{background:var(--ink, #ececec)} .ds-switch-on .ds-knob{transform:translateX(18px);background:var(--page, #212121);box-shadow:none} .ds-switch:focus-visible{outline:2px solid var(--accent, #ececec);outline-offset:2px}"
+    },
+    {
+      "name": "Code Block",
+      "kind": "card",
+      "refersTo": "code-block",
+      "description": "Inset well with a 40px language and copy bar, mono 13px, horizontal scroll with an edge fade and no line numbers.",
+      "html": "<div class=\"ds-code\"><div class=\"ds-code-bar\"><span class=\"ds-code-lang\">yaml</span><button class=\"ds-code-copy\">Copy</button></div><pre class=\"ds-code-pre\">services:\n  immich-machine-learning:\n    healthcheck:\n      interval: 30s</pre></div>",
+      "css": ".ds-code{max-width:560px;overflow:hidden;border-radius:16px;background:var(--inset, #1b1b1b);box-shadow:0 0 0 1px oklch(100% 0 0 / .07)} .ds-code-bar{display:flex;align-items:center;justify-content:space-between;height:40px;padding:0 8px 0 16px} .ds-code-lang{font:400 12px/1.5 ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;color:var(--ink-3, #9b9b9b)} .ds-code-copy{height:28px;padding:0 8px;border:0;border-radius:10px;background:transparent;color:var(--ink-2, #b4b4b4);font:500 12px/1.5 ui-sans-serif, -apple-system, system-ui, 'Segoe UI', Helvetica, Arial, sans-serif;cursor:pointer;transition:background-color 150ms,color 150ms,transform 150ms} .ds-code-copy:hover{background:var(--hover, oklch(100% 0 0 / .06));color:var(--ink, #ececec)} .ds-code-copy:active{transform:scale(.97)} .ds-code-pre{margin:0;padding:2px 16px 16px;overflow-x:auto;color:var(--ink, #ececec);font:400 13px/1.65 ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Reading Column",
+    "overview": "A familiar chat client played straight, judged against the ChatGPT app and not against a distinctive world. One calm column of prose and bubbles, a sidebar one step darker than the page, a pill composer that floats over the thread's last line. The system's whole job is to get out of the way of long agent replies, code and tool output, and to make three things visible without hunting: a live run, a pending approval, an unread scheduled report.\n\nThe palette is hue-free grey; the faces are the platform's own (SF Pro and SF Mono on Apple, a system fallback elsewhere), so there is nothing to download on a phone. Depth is value in dark and ring plus soft drop in light. Hue is rationed to states that ask something of you. Density is generous where reading happens (16px at 1.7 to 1.75, 28 to 36px between turns) and compact where chrome lives (14px, 36px rows). The look it rejects is the pre-redesign one: 12 to 13px chrome, a web font on a flat grey ramp, a cramped thread.",
+    "keyCharacteristics": [
+      "One reading column, 768px max, centred; the sidebar is a permanent 272px column from `lg`, a drawer below.",
+      "Surfaces separate by value, not outline: sidebar #181818 < page #212121 < raised #303030 in dark.",
+      "Ink is the accent. Primary actions are ink-on-page pills; there is no brand hue.",
+      "Hue only as signal: orange for waiting on you, red for failure and danger. Completed states are neutral.",
+      "Pill and circle controls (full radius) for actions; 10px rounded rectangles for rows and fields; 28px composer, 22px bubbles.",
+      "Motion is short ease-out fades and small rises, capped at 300ms, with no bounce."
+    ],
+    "rules": [
+      {
+        "name": "The Hue-Is-A-Signal Rule",
+        "body": "Hue means the run needs you (orange) or something failed (red). A running run is shown by a neutral `ink-2` pulsing dot, and a completed tool call is a quiet `ink-3` check. Completed, on, and ordinary-success states are neutral; do not tint them.",
+        "section": "colors"
+      },
+      {
+        "name": "The Value-Not-Outline Rule",
+        "body": "In dark, separation comes from the step between #181818, #212121 and #303030. A raised surface gets at most a 6 to 8% white ring, never a visible border.",
+        "section": "colors"
+      },
+      {
+        "name": "The Ink-Is-The-Accent Rule",
+        "body": "The primary action is `ink` on `page` (near-white pill in dark, near-black in light). Do not introduce a brand colour for buttons, links or selection.",
+        "section": "colors"
+      },
+      {
+        "name": "The 16-Floor Rule",
+        "body": "Any text field a thumb can focus is 16px or larger, or iOS Safari zooms the viewport and never zooms back. The only step down is the sidebar's filter and rename fields on `pointer: fine`, which drop to 14px; touch stays 16.",
+        "section": "typography"
+      },
+      {
+        "name": "The Sentence-Case Rule",
+        "body": "Labels, section dividers and speaker names are sentence case at label size in `ink-2` or `ink-3`. There is no uppercase, no letter-spacing and no eyebrow style anywhere in the system.",
+        "section": "typography"
+      },
+      {
+        "name": "The Numbers Align Rule",
+        "body": "Anything that ticks or sits in a column sets `tabular-nums` (timers, counts, times, table cells); a table column whose every filled cell is numeric is right-aligned.",
+        "section": "typography"
+      },
+      {
+        "name": "The Measured Shell Rule",
+        "body": "The shell's height is measured, not declared: `window.innerHeight` becomes `--app-height`, and `h-app` reads it. `dvh` and `visualViewport` are never the source.",
+        "section": "layout"
+      },
+      {
+        "name": "The One Column Rule",
+        "body": "Reading and composing share one centred 768px column. Wide content (tables, code, commands) scrolls inside its own box instead of widening the column.",
+        "section": "layout"
+      },
+      {
+        "name": "The Flat-At-Rest Rule",
+        "body": "Beyond a 1px ring and the faint contact shadow under secondary buttons, only the composer, the jump-to-latest button and overlays cast a drop. Rows, bubbles and assistant prose carry no shadow and no border.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Role Radius Rule",
+        "body": "Radius follows role, not size: pills for actions, 10px for rows and fields, 16px for containers that hold content, 22px for a bubble, 28px for the composer. A new surface picks the tier of what it is.",
+        "section": "shapes"
+      },
+      {
+        "name": "The Anchored Overlay Rule",
+        "body": "An overlay opens from, or is anchored to, the thing that summoned it: menus from their trigger, the thinking menu from its chip, the composer menu from the composer, dialogs bottom-anchored on a phone. Nothing floats at an arbitrary position.",
+        "section": "components"
+      }
+    ],
+    "dos": [
+      "**Do** separate dark surfaces by value: #181818 sidebar, #212121 page, #303030 raised, and keep the ring on raised surfaces at 6 to 8% white.",
+      "**Do** keep hue for states that ask something of the reader: `orange` for waiting, `red` for failure and destructive actions. Show running with the neutral pulsing dot.",
+      "**Do** make the primary action an ink-on-page pill and every other action a ghost or ring-secondary pill.",
+      "**Do** use the type tokens (`text-meta`, `text-label`, `text-ui`, `text-body`, `text-input`, `text-title`) and never an arbitrary pixel size, so the text-size preference moves everything together.",
+      "**Do** keep text fields at 16px on touch, and keep sizes in px so the shell ignores the browser root size.",
+      "**Do** size the shell with `h-app`, pay `pt-safe` / `pb-safe` / `px-safe` on every edge surface, and anchor overlays with `inset-x-0 top-0 h-app`.",
+      "**Do** declare every animation through a top-level keyframe and a duration token (`--duration-quick` 150, `--duration-fast` 200, `--duration-medium` 250, `--duration-slow` 300) with `--ease-out-strong` (`cubic-bezier(0.23, 1, 0.32, 1)`); use `--ease-drawer` (`cubic-bezier(0.32, 0.72, 0, 1)`) for anything that slides in from an edge.",
+      "**Do** give every control a press response: scale 0.97 for buttons, 0.96 to 0.94 for small icon and circle controls, 0.98 to 0.99 for rows.",
+      "**Do** put a 44px `tap-target` on anything drawn smaller, and reveal hover-only actions permanently on touch.",
+      "**Do** build generated Markdown as React elements only; user text stays literal.",
+      "**Do** keep tool names, paths and command text in mono and everything else in the UI face."
+    ],
+    "donts": [
+      "**Don't** use `dvh` or `visualViewport` to size the shell, `sticky` or `fixed` for the composer, or `fixed inset-0` for a bottom-anchored overlay.",
+      "**Don't** tint completed, enabled or ordinary-success states, and don't add a brand hue to buttons or links.",
+      "**Don't** add outlines to raised surfaces in dark, or drop shadows to rows, bubbles or prose.",
+      "**Don't** add uppercase, tracked or eyebrow labels, gradient text, glyph characters standing in for icons, or a web font.",
+      "**Don't** declare keyframes inside `@theme`, run an entrance or transition longer than 300ms, add bounce, or put a filter or blur over long text (it was removed from the resolving state because it repaints on a phone). Looping status indicators are the only animation allowed to run longer.",
+      "**Don't** widen the thread past 768px; wide tables and code scroll inside their own box instead.",
+      "**Don't** edit the `NO_FLASH` pre-paint script without matching `applyPrefsToDocument()`.",
+      "**Don't** let a hue appear only in colour: pair it with a label or shape (the Waiting and Blocked badges carry text)."
+    ]
+  }
+}

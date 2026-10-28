@@ -86,6 +86,8 @@ Never make the browser talk to `:8642` directly.
 | Path | Role |
 |---|---|
 | `README.md` | The public front page. |
+| `PRODUCT.md` | Who the app is for and the product principles any UI work answers to. |
+| `DESIGN.md` | The visual system as built: tokens, type, components, named rules. `.impeccable/design.json` is its machine-readable sidecar. |
 | `SETUP.md` | The install runbook, addressed to an agent doing it for its user. |
 | `src/lib/branding.ts` | `APP_NAME` and `APP_SLUG`. No imports, so either side can read it. |
 | `src/lib/app-settings.ts` | Install-wide settings in SQLite — currently just the agent's name. |

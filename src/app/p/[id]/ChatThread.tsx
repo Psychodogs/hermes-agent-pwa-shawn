@@ -526,27 +526,27 @@ export function ChatThread({
         data-selectable
         className="scroll-area min-h-0 flex-1 overflow-y-auto overscroll-contain"
       >
-        <div className="px-safe mx-auto flex w-full max-w-3xl flex-col gap-5 pt-4 pb-2">
+        <div className="px-safe mx-auto flex w-full max-w-3xl flex-col gap-7 pt-5 pb-6 sm:gap-9">
           {messages.length === 0 && !running && (
             <div
-              className="flex flex-col items-center gap-4 py-12 text-center"
+              className="flex flex-col items-center gap-5 py-16 text-center"
               style={{ animation: "fade-up var(--duration-slow) var(--ease-out-strong) both" }}
             >
-              <p className="max-w-xs text-label text-ink-3">
+              <p className="max-w-xs text-ui text-balance text-ink-2">
                 {scheduled
                   ? "Scheduled reports for this project will appear here."
                   : "Nothing here yet. This thread stays put — come back to it whenever."}
               </p>
               {!scheduled && (
-                <div className="flex w-full max-w-sm flex-col gap-1.5">
+                <div className="flex w-full max-w-sm flex-col gap-2">
                   {starters.map((starter) => (
                     <button
                       key={starter}
                       type="button"
                       onClick={() => seedComposer(starter)}
-                      className="rounded-card bg-surface px-3.5 py-2.5 text-left text-label text-ink-2
-                        shadow-card transition-[color,transform] duration-150 hover:text-ink
-                        active:scale-[0.98]"
+                      className="rounded-card px-4 py-3 text-left text-ui text-ink-2 shadow-card
+                        transition-[color,background-color,transform] duration-150 hover:bg-hover
+                        hover:text-ink active:scale-[0.98]"
                     >
                       {starter}
                     </button>
@@ -559,7 +559,7 @@ export function ChatThread({
           {renderMessages(messages.slice(0, splitAt), 0)}
 
           {(thinking || tools.length > 0 || subagents.length > 0 || streaming || running) && (
-            <div className="flex w-full flex-col gap-2.5">
+            <div className="flex w-full flex-col gap-3">
               <ThinkingTrace text={thinking} working={running && !streaming} />
               {/* Delegated work above the parent's own tool calls: a subagent
                 * is the reason the parent went quiet, and its accounting is
@@ -603,9 +603,9 @@ export function ChatThread({
           aria-hidden={pinned}
           tabIndex={pinned ? -1 : 0}
           onClick={jumpToLatest}
-          className={`absolute right-1 bottom-2 flex size-9 items-center justify-center
-            rounded-full bg-surface text-ink-2 shadow-raised transition-[opacity,transform]
-            duration-200 active:scale-[0.94] ${
+          className={`absolute inset-x-0 bottom-3 mx-auto flex size-9 items-center justify-center
+            rounded-full border border-line-strong bg-surface text-ink shadow-raised transition-[opacity,transform]
+            duration-200 ease-[var(--ease-out-strong)] active:scale-[0.94] ${
               pinned
                 ? "pointer-events-none translate-y-1 opacity-0"
                 : "pointer-events-auto translate-y-0 opacity-100"
@@ -616,7 +616,7 @@ export function ChatThread({
           {unseen && (
             <span
               aria-hidden
-              className="absolute top-0.5 right-0.5 size-2 rounded-full bg-ink ring-2 ring-surface"
+              className="absolute top-1 right-1 size-2 rounded-full bg-ink ring-2 ring-surface"
               style={{ animation: "pop-in var(--duration-fast) var(--ease-out-strong) both" }}
             />
           )}

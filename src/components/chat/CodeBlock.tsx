@@ -18,23 +18,23 @@ export function CodeBlock({ code, language }: { code: string; language?: string 
   }, [code]);
 
   return (
-    <div className="my-2 w-full overflow-hidden rounded-card bg-surface shadow-hairline">
-      <div className="primitive-card-bar flex items-center justify-between border-b border-line">
+    <div className="w-full overflow-hidden rounded-card bg-inset shadow-card">
+      <div className="flex h-10 items-center justify-between pr-2 pl-4">
         <span className="font-mono text-meta text-ink-3">{language || "text"}</span>
         <button
           type="button"
           aria-label="Copy code"
           onClick={copy}
-          className={`flex h-6 items-center gap-1 rounded-chip px-1.5 text-meta font-medium
-            transition-colors duration-100 hover:bg-hover
-            ${copied ? "text-green" : "text-ink-3 hover:text-ink"}`}
+          className={`tap-target flex h-7 items-center gap-1.5 rounded-control px-2 text-meta font-medium
+            transition-[color,background-color,transform] duration-150 hover:bg-hover active:scale-[0.97]
+            ${copied ? "text-green" : "text-ink-2 hover:text-ink"}`}
         >
           {copied ? (
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M20 6L9 17l-5-5" />
             </svg>
           ) : (
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <rect x="9" y="9" width="12" height="12" rx="2.5" />
               <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
             </svg>
@@ -43,13 +43,12 @@ export function CodeBlock({ code, language }: { code: string; language?: string 
         </button>
       </div>
 
-      <pre className="overflow-x-auto bg-inset px-3 py-2.5 font-mono text-meta leading-[1.7]">
+      {/* No line-number gutter: on a phone it cost a tenth of the width, and
+        * the category's own code blocks don't carry one. */}
+      <pre className="scroll-area scroll-fade-x overflow-x-auto px-4 pt-0.5 pb-4 font-mono text-label leading-[1.65] text-ink [--fade-bg:var(--inset)]">
         {lines.map((line, i) => (
-          <div key={i} className="flex">
-            <span className="w-6 shrink-0 text-right text-micro leading-[1.86] text-ink-3/60 select-none">
-              {i + 1}
-            </span>
-            <span className="pl-2.5 whitespace-pre text-ink-2">{line || " "}</span>
+          <div key={i} className="whitespace-pre">
+            {line || " "}
           </div>
         ))}
       </pre>

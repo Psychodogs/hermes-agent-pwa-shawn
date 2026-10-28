@@ -13,7 +13,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
  * trigger. */
 
 export function MenuSeparator() {
-  return <div role="separator" className="my-1 h-px bg-line" />;
+  return <div role="separator" className="mx-1 my-1 h-px bg-line" />;
 }
 
 export function MenuItem({
@@ -35,20 +35,24 @@ export function MenuItem({
       type="button"
       role="menuitem"
       onClick={onSelect}
-      className={`flex h-9 w-full items-center gap-2.5 rounded-control px-2 text-left
-        text-label font-medium transition-colors duration-100
-        hover:bg-hover-2 focus-visible:bg-hover-2 focus-visible:outline-none
+      className={`flex min-h-9 w-full items-center gap-2.5 rounded-control px-2.5 text-left
+        text-ui transition-[transform,background-color,color] duration-150
+        hover:bg-hover focus-visible:bg-hover focus-visible:outline-none
         active:scale-[0.98] ${tone === "danger" ? "text-red" : "text-ink"}`}
     >
       {icon && (
-        <span className={`flex size-4 shrink-0 items-center justify-center ${
-          tone === "danger" ? "text-red" : "text-ink-3"
-        }`}>
+        <span
+          className={`flex size-4 shrink-0 items-center justify-center [&_svg]:size-4 ${
+            tone === "danger" ? "text-red" : "text-ink-2"
+          }`}
+        >
           {icon}
         </span>
       )}
       <span className="min-w-0 flex-1 truncate">{label}</span>
-      {hint && <span className="shrink-0 text-meta text-ink-3">{hint}</span>}
+      {hint && (
+        <span className="shrink-0 pl-3 text-meta text-ink-3 tabular-nums">{hint}</span>
+      )}
     </button>
   );
 }
@@ -57,6 +61,7 @@ export function Menu({
   label,
   trigger,
   align = "start",
+  triggerSize = "sm",
   children,
 }: {
   /** accessible name for the trigger */
@@ -64,6 +69,8 @@ export function Menu({
   /** glyph rendered inside the trigger button */
   trigger: ReactNode;
   align?: "start" | "end";
+  /** the trigger's footprint: "sm" for in-row menus, "lg" for the header's icon pair */
+  triggerSize?: "sm" | "lg";
   /** render prop — `close` so an item can dismiss the menu as it acts */
   children: (close: () => void) => ReactNode;
 }) {
@@ -119,9 +126,11 @@ export function Menu({
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((current) => !current)}
-        className="tap-target flex size-9 shrink-0 items-center justify-center rounded-control
-          text-ink-2 transition-colors duration-100 hover:bg-hover-2 hover:text-ink
-          active:scale-[0.96]"
+        className={`tap-target flex shrink-0 items-center justify-center rounded-control
+          text-ink-2 transition-[transform,background-color,color] duration-150
+          hover:bg-hover hover:text-ink active:scale-[0.96] ${
+            triggerSize === "lg" ? "size-10" : "size-9"
+          }`}
       >
         {trigger}
       </button>
@@ -136,14 +145,14 @@ export function Menu({
             aria-hidden
             tabIndex={-1}
             onClick={() => setOpen(false)}
-            className="fixed inset-0 z-40 cursor-default"
+            className="h-app fixed inset-x-0 top-0 z-40 cursor-default"
           />
           <div
             ref={panelRef}
             role="menu"
             aria-label={label}
-            className={`absolute top-full z-50 mt-1 min-w-[204px] rounded-card border border-line
-              bg-surface p-1 shadow-overlay ${align === "end" ? "right-0" : "left-0"}`}
+            className={`absolute top-full z-50 mt-1.5 min-w-[216px] rounded-popover bg-surface
+              p-1.5 shadow-overlay ${align === "end" ? "right-0" : "left-0"}`}
             style={{
               animation: "pop-in var(--duration-quick) var(--ease-out-strong) both",
               transformOrigin: align === "end" ? "top right" : "top left",

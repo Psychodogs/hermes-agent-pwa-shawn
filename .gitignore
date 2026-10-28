@@ -53,3 +53,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# impeccable: review screenshots and decision-round scratch (design.json and
+# surfaces/ are the durable records and are committed)
+/.impeccable/review/
+/.impeccable/mocks/

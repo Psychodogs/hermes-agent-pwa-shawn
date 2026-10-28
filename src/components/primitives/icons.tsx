@@ -285,3 +285,19 @@ export const IconShare = (p: IconProps) => (
     <path d="M12 3v12M8 7l4-4 4 4M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7" />
   </Svg>
 );
+
+/* filled dots, so the glyph reads at 16px where a stroked ring would not */
+export const IconMore = (p: IconProps) => (
+  <Svg {...p} fill="currentColor" strokeWidth={0}>
+    <circle cx="5" cy="12" r="1.75" />
+    <circle cx="12" cy="12" r="1.75" />
+    <circle cx="19" cy="12" r="1.75" />
+  </Svg>
+);
+
+export const IconClock = (p: IconProps) => (
+  <Svg {...p}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 7v5l3 2" />
+  </Svg>
+);

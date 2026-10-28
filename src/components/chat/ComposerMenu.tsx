@@ -155,21 +155,28 @@ export function ComposerMenu({
     <div
       role="listbox"
       aria-label={mode.kind === "mention" ? "Skills" : "Commands"}
-      className="absolute inset-x-0 bottom-full z-30 mb-1.5 overflow-hidden rounded-card bg-surface shadow-overlay"
-      style={{ animation: "pop-in var(--duration-quick) var(--ease-out-strong) both" }}
+      className="absolute inset-x-0 bottom-full z-30 mb-2 overflow-hidden rounded-popover bg-surface p-1.5 shadow-overlay"
+      style={{
+        animation: "pop-in var(--duration-quick) var(--ease-out-strong) both",
+        // grows out of the composer it is attached to, not from its middle
+        transformOrigin: "bottom left",
+      }}
     >
-      <div className="primitive-card-bar flex items-center gap-1.5 text-meta text-ink-3">
-        <span className="flex size-3.5 items-center justify-center">
-          {mode.kind === "mention" ? <IconAt size={12} /> : <IconSlash size={12} />}
+      <div className="flex items-center gap-2 px-2.5 pt-1.5 pb-1 text-label text-ink-3">
+        <span className="flex size-4 items-center justify-center">
+          {mode.kind === "mention" ? <IconAt size={14} /> : <IconSlash size={14} />}
         </span>
         <span>{mode.kind === "mention" ? "Link a skill" : "Commands"}</span>
       </div>
 
-      <div ref={listRef} className="max-h-[46dvh] overflow-y-auto overscroll-contain scroll-area">
+      <div
+        ref={listRef}
+        className="scroll-area max-h-[calc(var(--app-height,100dvh)*0.46)] overflow-y-auto overscroll-contain"
+      >
         {items.map((item, i) => (
           <div key={item.key}>
             {item.heading && (
-              <div className="sticky top-0 z-10 bg-surface px-3 pt-2 pb-1 text-meta font-semibold tracking-[0.06em] text-ink-3 uppercase">
+              <div className="sticky top-0 z-10 bg-surface px-2.5 pt-2.5 pb-1 text-label text-ink-3">
                 {item.heading}
               </div>
             )}
@@ -183,13 +190,13 @@ export function ComposerMenu({
               // the caret position we're inserting at is gone.
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => onSelect(item, i)}
-              className={`flex w-full items-baseline gap-2 px-3 py-2 text-left transition-colors duration-100
-                disabled:cursor-default ${
+              className={`flex min-h-9 w-full items-baseline gap-2.5 rounded-control px-2.5 py-1.5 text-left
+                transition-colors duration-150 disabled:cursor-default ${
                   item.disabled
                     ? "opacity-60"
                     : i === index
                       ? "bg-hover"
-                      : "hover:bg-hover-2"
+                      : "hover:bg-hover"
                 }`}
             >
               <span
@@ -198,7 +205,7 @@ export function ComposerMenu({
                 {item.title}
               </span>
               {item.subtitle && (
-                <span className="min-w-0 flex-1 truncate text-meta text-ink-3">
+                <span className="min-w-0 flex-1 truncate text-label text-ink-3">
                   {item.subtitle}
                 </span>
               )}
@@ -213,7 +220,7 @@ export function ComposerMenu({
       </div>
 
       {showUnroutedNote && (
-        <p className="primitive-card-footer border-t border-line text-meta leading-[1.5] text-ink-3">
+        <p className="mx-1 mt-1 border-t border-line px-1.5 pt-2.5 pb-1.5 text-label text-ink-3">
           {UNROUTED_REASON}
         </p>
       )}

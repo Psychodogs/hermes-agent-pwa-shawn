@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { ToolCall } from "@/lib/chat-types";
 import { usePreferences } from "@/components/PreferencesContext";
-import { IconChevronDown, IconFile, IconTerminal, IconWrench } from "@/components/primitives/icons";
+import { IconCheck, IconChevronDown, IconFile, IconTerminal, IconWrench } from "@/components/primitives/icons";
 
 /* ToolChips' row grammar — icon, label, inline chip, expandable detail —
  * fed by tool.started / tool.progress / tool.completed instead of the
@@ -28,7 +28,9 @@ function statusDot(status: ToolCall["status"]) {
   if (status === "failed") {
     return <span className="size-2 shrink-0 rounded-full bg-red" />;
   }
-  return <span className="size-2 shrink-0 rounded-full bg-green" />;
+  // done is the ordinary outcome, so it is drawn quietly; hue is kept for
+  // the states that ask something of you
+  return <IconCheck size={13} className="shrink-0 text-ink-3" />;
 }
 
 function ToolRow({ tool }: { tool: ToolCall }) {
@@ -72,7 +74,7 @@ function ToolRow({ tool }: { tool: ToolCall }) {
         </span>
 
         {tool.preview && (
-          <span className="inline-flex h-6 min-w-0 flex-1 items-center truncate rounded-chip bg-field px-2 font-mono text-meta text-ink-2 shadow-hairline">
+          <span className="inline-flex h-6 min-w-0 flex-1 items-center truncate font-mono text-meta text-ink-3">
             {tool.preview}
           </span>
         )}

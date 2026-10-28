@@ -32,7 +32,7 @@ export function QueuedRows({ queued }: { queued: string[] }) {
       {queued.map((text, i) => (
         <div
           key={`${i}-${text.slice(0, 24)}`}
-          className="flex items-center gap-2.5 rounded-card bg-surface px-2.5 py-2 shadow-hairline"
+          className="flex items-center gap-3 rounded-card bg-surface px-3 py-2.5 shadow-card"
           style={{
             animation: `fade-up var(--duration-slow) var(--ease-out-strong) ${i * 80}ms both`,
           }}

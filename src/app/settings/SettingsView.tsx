@@ -8,11 +8,13 @@ import { useStatus } from "@/hooks/useStatus";
 import { useModels } from "@/hooks/useModels";
 import { usePush, isIos, isStandalone } from "@/hooks/usePush";
 import {
+  FIELD_CLASS,
   Segmented,
   SettingsAction,
   SettingsRow,
   SettingsSection,
   Toggle,
+  buttonClass,
 } from "@/components/ui/SettingsControls";
 import { useAgentName, useSetAgentName } from "@/components/AgentNameContext";
 import { AGENT_NAME_MAX, APP_NAME } from "@/lib/branding";
@@ -61,24 +63,24 @@ export function SettingsView({ version }: { version: string }) {
 
   return (
     <div className="flex h-app w-full flex-col overflow-hidden bg-page">
-      <header className="pt-safe z-30 shrink-0 border-b border-line bg-page">
-        <div className="grid h-14 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-1 px-1.5">
+      <header className="pt-safe z-30 shrink-0 bg-page">
+        <div className="grid h-13 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-1 px-1.5">
           <Link
             href="/"
             aria-label="Back"
-            className="tap-target flex size-9 items-center justify-center rounded-control
-              text-ink-2 transition-colors duration-100 hover:bg-hover-2 hover:text-ink
-              active:scale-[0.96]"
+            className="tap-target flex size-10 items-center justify-center rounded-control
+              text-ink-2 transition-[transform,background-color,color] duration-150
+              hover:bg-hover hover:text-ink active:scale-[0.96]"
           >
-            <IconArrowLeft size={17} />
+            <IconArrowLeft size={20} />
           </Link>
           <h1 className="text-center text-ui font-semibold text-ink">Settings</h1>
-          <span className="size-9" />
+          <span className="size-10" />
         </div>
       </header>
 
       <div className="scroll-area min-h-0 flex-1 overflow-y-auto overscroll-contain">
-        <div className="px-safe pb-safe mx-auto w-full max-w-3xl pb-8">
+        <div className="px-safe pb-safe mx-auto w-full max-w-2xl pb-12">
           <SettingsSection title="Appearance">
             <SettingsRow
               stacked
@@ -223,7 +225,7 @@ export function SettingsView({ version }: { version: string }) {
 }
 
 function Meta({ children }: { children: React.ReactNode }) {
-  return <span className="font-mono text-meta text-ink-3">{children}</span>;
+  return <span className="font-mono text-label text-ink-2">{children}</span>;
 }
 
 /* What the agent is called.
@@ -271,9 +273,7 @@ function AgentSection() {
             maxLength={AGENT_NAME_MAX}
             placeholder={APP_NAME}
             aria-label="Agent name"
-            className="h-9 w-full rounded-control border border-line bg-field px-2.5
-              text-input text-ink outline-none transition-colors duration-150
-              placeholder:text-ink-3 focus:border-line-strong sm:text-label"
+            className={FIELD_CLASS}
           />
         }
       />
@@ -295,9 +295,9 @@ function NotificationsSection() {
   return (
     <SettingsSection title="Notifications">
       {hint && (
-        <div className="border-b border-line bg-accent-tint px-3 py-2.5">
-          <p className="text-label font-medium text-ink">Install {APP_NAME} first</p>
-          <p className="mt-0.5 text-meta leading-snug text-ink-2">
+        <div className="my-3 rounded-card bg-field px-4 py-3">
+          <p className="text-ui font-medium text-ink">Install {APP_NAME} first</p>
+          <p className="mt-0.5 text-label leading-snug text-ink-2">
             iOS only allows notifications from a home-screen app. Tap Share, then
             “Add to Home Screen”, and open {APP_NAME} from there.
           </p>
@@ -364,7 +364,7 @@ function NotificationsSection() {
       )}
 
       {error && (
-        <p className="border-t border-line px-3 py-2 text-meta text-red">{error}</p>
+        <p className="py-3 text-label text-red">{error}</p>
       )}
     </SettingsSection>
   );
@@ -423,7 +423,9 @@ function ScheduledSection() {
             key={job.id}
             type="button"
             onClick={() => setEditing(job)}
-            className="w-full text-left transition-colors duration-100 hover:bg-hover-2"
+            className="relative isolate block w-full text-left before:absolute before:inset-x-[-0.5rem]
+              before:inset-y-1 before:-z-10 before:rounded-control before:transition-colors
+              before:duration-150 hover:before:bg-hover"
           >
             <SettingsRow
               label={job.name}
@@ -431,13 +433,13 @@ function ScheduledSection() {
               control={
                 <span className="flex shrink-0 items-center gap-1.5">
                   {job.binding && (
-                    <span className="max-w-[7rem] truncate rounded-chip bg-accent-tint px-1.5 text-meta text-ink-2">
+                    <span className="max-w-[7rem] truncate rounded-chip bg-field px-1.5 text-meta text-ink-2">
                       {job.binding.project_name ?? "project"}
                     </span>
                   )}
                   <span
                     aria-hidden
-                    className={`size-1.5 rounded-full ${
+                    className={`size-2 rounded-full ${
                       job.enabled === false
                         ? "bg-ink-3"
                         : job.last_status && job.last_status !== "ok"
@@ -536,7 +538,7 @@ function ConnectionSection() {
           <span className="flex items-center gap-2">
             <span
               aria-hidden
-              className={`size-1.5 rounded-full ${
+              className={`size-2 rounded-full ${
                 !loaded ? "bg-ink-3" : reachable ? "bg-green" : "bg-red"
               }`}
             />
@@ -636,14 +638,12 @@ function ArchivedSection() {
           label={`${project.emoji ? `${project.emoji} ` : ""}${project.name}`}
           hint={new Date(project.last_active_at).toLocaleDateString()}
           control={
-            <span className="flex items-center gap-1.5">
+            <span className="flex items-center gap-2">
               <button
                 type="button"
                 disabled={busy === project.id}
                 onClick={() => void unarchive(project.id)}
-                className="h-8 rounded-control border border-line-strong px-2.5 text-label
-                  font-medium text-ink transition-[background-color,transform] duration-200
-                  enabled:hover:bg-hover enabled:active:scale-[0.98] disabled:opacity-40"
+                className={buttonClass("secondary", "sm")}
               >
                 Restore
               </button>
@@ -651,8 +651,7 @@ function ArchivedSection() {
                 type="button"
                 disabled={busy === project.id}
                 onClick={() => void remove(project.id)}
-                className="h-8 rounded-control px-2.5 text-label font-medium text-red
-                  transition-colors duration-100 enabled:hover:bg-hover disabled:opacity-40"
+                className={buttonClass("ghost-danger", "sm")}
               >
                 Delete
               </button>

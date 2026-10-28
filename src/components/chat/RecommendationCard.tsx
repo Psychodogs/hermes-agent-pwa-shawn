@@ -85,30 +85,30 @@ export function RecommendationCard({
       className="w-full overflow-hidden rounded-card bg-surface shadow-card"
       style={{ animation: "pop-in var(--duration-fast) var(--ease-out-strong) both" }}
     >
-      <div className="primitive-card-pad">
-        <div className="flex items-start gap-2">
+      <div className="p-4">
+        <div className="flex items-start gap-2.5">
           {/* A question shares the approval card's orange: both are the run
             * stopping to wait on you, and they should read as one family. */}
           <span
-            className={`mt-px flex size-5 shrink-0 items-center justify-center rounded-full ${
+            className={`mt-px flex size-6 shrink-0 items-center justify-center rounded-full ${
               asking ? "bg-orange-tint text-orange" : "bg-accent-tint text-accent"
             }`}
           >
-            {asking ? <IconQuestion size={12} /> : <IconBulb size={12} />}
+            {asking ? <IconQuestion size={14} /> : <IconBulb size={14} />}
           </span>
-          <span className="text-ui font-medium text-ink [overflow-wrap:anywhere]">
+          <span className="pt-0.5 text-ui font-semibold text-balance text-ink [overflow-wrap:anywhere]">
             {title}
           </span>
         </div>
 
         {rationale && (
-          <p className="mt-1.5 text-ui leading-[1.5] whitespace-pre-wrap text-ink-2 [overflow-wrap:anywhere]">
+          <p className="mt-2 text-ui leading-[1.55] whitespace-pre-wrap text-ink-2 [overflow-wrap:anywhere]">
             {rationale}
           </p>
         )}
 
         {typeof confidence === "number" && (
-          <div className="mt-2.5">
+          <div className="mt-3">
             <Meter
               value={confidence}
               label="Confidence"
@@ -123,18 +123,18 @@ export function RecommendationCard({
           * usually destructive. A full-width row is also the easiest thing
           * to hit with a thumb. */}
         {actions.length > 0 && (
-          <div className="mt-2.5 flex flex-col gap-1.5">
+          <div className="mt-4 flex flex-col gap-2">
             {actions.map((action, i) =>
               onAction ? (
                 <button
                   key={i}
                   type="button"
                   onClick={() => onAction(action.reply)}
-                  className={`tap-target flex h-9 w-full items-center justify-center rounded-control px-3
-                    text-label font-medium shadow-btn transition-transform duration-100 active:scale-[0.98] ${
+                  className={`flex h-10 w-full items-center justify-center rounded-full px-4
+                    text-ui font-medium transition-[background-color,transform] duration-150 active:scale-[0.98] ${
                       i === 0
                         ? "bg-ink text-page"
-                        : "bg-field text-ink hover:bg-hover"
+                        : "text-ink shadow-btn hover:bg-hover"
                     }`}
                 >
                   <span className="truncate">{action.label}</span>
@@ -142,7 +142,7 @@ export function RecommendationCard({
               ) : (
                 <span
                   key={i}
-                  className="flex h-9 w-full items-center justify-center rounded-control bg-field px-3 text-label text-ink-3"
+                  className="flex h-10 w-full items-center justify-center rounded-full px-4 text-ui text-ink-3 shadow-hairline"
                 >
                   <span className="truncate">{action.label}</span>
                 </span>
@@ -154,7 +154,7 @@ export function RecommendationCard({
         {/* Buttons are shortcuts, not the whole answer set — say so, or three
           * options read as the only three. Only worth saying while they work. */}
         {asking && onAction && actions.length > 0 && (
-          <p className="mt-1.5 text-meta text-ink-3">or type your own answer</p>
+          <p className="mt-2.5 text-center text-label text-ink-3">or type your own answer</p>
         )}
       </div>
     </div>

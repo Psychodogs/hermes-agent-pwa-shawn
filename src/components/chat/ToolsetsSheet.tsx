@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Sheet } from "@/components/ui/Sheet";
 import { IconCross, IconWrench } from "@/components/primitives/icons";
+import { ICON_BUTTON } from "@/components/ui/SettingsControls";
 import type { HermesToolset } from "@/lib/hermes";
 
 /* GET /v1/toolsets, rendered.
@@ -45,36 +46,31 @@ export function ToolsetsSheet({ open, onClose }: { open: boolean; onClose: () =>
 
   return (
     <Sheet open={open} onClose={onClose} label="Toolsets">
-      <div className="flex items-center justify-between gap-2 px-3 py-2.5">
-        <span className="flex items-center gap-1.5 text-ui font-medium text-ink">
-          <IconWrench size={14} className="text-ink-3" />
+      <div className="flex items-center justify-between gap-2 px-5 pt-5 pb-3">
+        <span className="flex items-center gap-2 text-title font-semibold text-ink">
+          <IconWrench size={16} className="text-ink-2" />
           Toolsets
         </span>
-        <button
-          type="button"
-          aria-label="Close"
-          onClick={onClose}
-          className="primitive-icon-button flex items-center justify-center text-ink-3 hover:bg-hover-2 hover:text-ink"
-        >
-          <IconCross size={14} />
+        <button type="button" aria-label="Close" onClick={onClose} className={`${ICON_BUTTON} -mr-2`}>
+          <IconCross size={16} />
         </button>
       </div>
 
-      <div className="flex flex-col gap-1.5 px-2 pb-3">
-        {!toolsets && <p className="px-2 py-3 text-meta text-ink-3">Loading…</p>}
+      <div className="flex flex-col gap-2 px-5 pb-5">
+        {!toolsets && <p className="py-3 text-label text-ink-3">Loading…</p>}
         {unavailable && (
-          <p className="px-2 py-3 text-meta leading-[1.5] text-ink-3">
+          <p className="py-3 text-label text-ink-3">
             Hermes didn&rsquo;t answer with its toolset list.
           </p>
         )}
         {sorted.map((toolset) => (
           <div
             key={toolset.name}
-            className="rounded-card bg-surface px-2.5 py-2 shadow-hairline"
+            className="rounded-card bg-surface px-3.5 py-3 shadow-card"
             style={{ opacity: toolset.enabled ? 1 : 0.55 }}
           >
-            <div className="flex items-center gap-1.5">
-              <span className="font-mono text-label font-medium text-ink">
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-ui font-medium text-ink">
                 {toolset.label || toolset.name}
               </span>
               <span
@@ -93,12 +89,12 @@ export function ToolsetsSheet({ open, onClose }: { open: boolean; onClose: () =>
               )}
             </div>
             {toolset.description && (
-              <p className="mt-0.5 text-meta leading-[1.5] text-ink-3">
+              <p className="mt-1 text-label text-ink-3">
                 {toolset.description}
               </p>
             )}
             {toolset.tools && toolset.tools.length > 0 && (
-              <p className="mt-1 font-mono text-meta leading-[1.6] text-ink-2 [overflow-wrap:anywhere]">
+              <p className="mt-2 font-mono text-meta leading-[1.6] text-ink-2 [overflow-wrap:anywhere]">
                 {toolset.tools.join(", ")}
               </p>
             )}
