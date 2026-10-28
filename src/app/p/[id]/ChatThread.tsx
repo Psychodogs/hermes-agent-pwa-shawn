@@ -647,7 +647,9 @@ function ChatThreadBody({ project, session, initialMessages }: ChatThreadProps) 
         * can run to dozens of lines, and pushing the composer off a 390px
         * screen would leave no way to answer in prose either. */}
       {(approval || pinnedQuestion) && (
-        <div className="px-safe z-20 mx-auto w-full max-w-3xl shrink-0 pb-1">
+        // Selectable like the transcript: this sits outside the scroller,
+        // and the approval's command is exactly what you'd want to copy.
+        <div data-selectable className="px-safe z-20 mx-auto w-full max-w-3xl shrink-0 pb-1">
           {/* the 2px inset keeps overflow-y-auto from shearing the card's
             * shadow off at the scroll box edge */}
           <div className="scroll-area max-h-[45dvh] overflow-y-auto overscroll-contain p-0.5">

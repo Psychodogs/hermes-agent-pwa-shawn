@@ -87,7 +87,12 @@ export function SettingsRow({
     >
       <div className="min-w-0 flex-1">
         <div className="text-ui text-ink">{label}</div>
-        {hint && <p className="mt-0.5 text-label leading-snug text-ink-3">{hint}</p>}
+        {/* body text, so selectable — only the chrome around it isn't */}
+        {hint && (
+          <p data-selectable className="mt-0.5 text-label leading-snug text-ink-3">
+            {hint}
+          </p>
+        )}
       </div>
       <div className={stacked ? "w-full sm:w-72 sm:shrink-0" : "shrink-0"}>{control}</div>
     </div>

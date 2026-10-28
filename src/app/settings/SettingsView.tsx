@@ -8,7 +8,7 @@ import { useStatus } from "@/hooks/useStatus";
 import { useModels } from "@/hooks/useModels";
 import { useBots } from "@/hooks/useBots";
 import type { Bot } from "@/lib/bots";
-import { usePush, isIos, isStandalone } from "@/hooks/usePush";
+import { usePush, isIos, isIosSafari, isStandalone } from "@/hooks/usePush";
 import {
   FIELD_CLASS,
   Segmented,
@@ -291,6 +291,8 @@ function NotificationsSection() {
   // first client render, so the UA sniff can't cause a hydration mismatch.
   const { hydrated } = usePreferences();
   const hint = hydrated && isIos() && !isStandalone();
+  // The Share-sheet steps are Safari's; any other iOS browser is sent there.
+  const safari = hint && isIosSafari();
 
   const on = state === "on";
   const actionable = state === "on" || state === "off";
@@ -299,10 +301,13 @@ function NotificationsSection() {
     <SettingsSection title="Notifications">
       {hint && (
         <div className="my-3 rounded-card bg-field px-4 py-3">
-          <p className="text-ui font-medium text-ink">Install {APP_NAME} first</p>
-          <p className="mt-0.5 text-label leading-snug text-ink-2">
-            iOS only allows notifications from a home-screen app. Tap Share, then
-            “Add to Home Screen”, and open {APP_NAME} from there.
+          <p className="text-ui font-medium text-ink">
+            Add {APP_NAME} to your Home Screen first
+          </p>
+          <p data-selectable className="mt-0.5 text-label leading-snug text-ink-2">
+            iOS only allows notifications from a Home Screen app.{" "}
+            {safari ? "Tap Share" : "Open this page in Safari, tap Share"}, then “Add to Home
+            Screen”, and open {APP_NAME} from there.
           </p>
         </div>
       )}

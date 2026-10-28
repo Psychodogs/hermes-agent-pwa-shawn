@@ -66,6 +66,16 @@ export function isStandalone(): boolean {
   );
 }
 
+/**
+ * Safari itself, as opposed to Chrome, Firefox or Edge on iOS (whose menus
+ * reach Add to Home Screen differently) or an in-app browser (which can't add
+ * to the Home Screen at all). Only meaningful when isIos() is true.
+ */
+export function isIosSafari(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return !/CriOS|FxiOS|EdgiOS|OPiOS|GSA|FBAN|FBAV|Instagram|Line\//.test(navigator.userAgent);
+}
+
 export function isIos(): boolean {
   if (typeof navigator === "undefined") return false;
   return (
