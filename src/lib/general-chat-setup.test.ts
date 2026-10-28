@@ -70,8 +70,8 @@ describe("planGeneralCleanup", () => {
     ];
     const plan = setup.planGeneralCleanup(sessions, new Set(["a-reply"]), general);
 
-    expect(plan.deletions.get("general")?.sort()).toEqual(["g-branch", "g-old"]);
-    const a = plan.deletions.get("a")!;
+    expect(plan.retire.get("general")?.sort()).toEqual(["g-branch", "g-old"]);
+    const a = plan.retire.get("a")!;
     expect([...a].sort()).toEqual(["a-inbox", "a-reply", "a-reply-branch"]);
     // children before parents, so upstream deletes never orphan a branch
     expect(a.indexOf("a-reply-branch")).toBeLessThan(a.indexOf("a-reply"));
@@ -84,7 +84,7 @@ describe("planGeneralCleanup", () => {
       row("bot", "general", { bot_chat: 1 }),
     ];
     const plan = setup.planGeneralCleanup(sessions, new Set(), general);
-    expect(plan.deletions.size).toBe(0);
+    expect(plan.retire.size).toBe(0);
   });
 
   it("asks for a fresh chat where cleanup would leave a project with none", () => {
@@ -100,7 +100,18 @@ describe("planGeneralCleanup", () => {
 });
 
 describe("migrateScheduledToGeneral", () => {
-  it("re-homes every report into General's one chat and deletes the old threads", async () => {
+  const visible = () =>
+    (db
+      .prepare(`SELECT session_id FROM project_sessions WHERE archived = 0 ORDER BY session_id`)
+      .all() as { session_id: string }[]).map((r) => r.session_id);
+  const retired = () =>
+    (db
+      .prepare(
+        `SELECT session_id FROM project_sessions WHERE retired_at IS NOT NULL ORDER BY session_id`,
+      )
+      .all() as { session_id: string }[]).map((r) => r.session_id);
+
+  it("re-homes every report into General and hides the old threads, keeping them in Hermes", async () => {
     db.exec(`
       INSERT INTO projects (id, name, session_id, created_at, last_active_at)
         VALUES ('general', 'General', 'g-main', 1, 1),
@@ -138,56 +149,58 @@ describe("migrateScheduledToGeneral", () => {
     expect(db.prepare(`SELECT project_id FROM cron_bindings`).all()).toEqual([
       { project_id: "general" },
     ]);
-    expect(
-      db.prepare(`SELECT session_id FROM project_sessions ORDER BY session_id`).all(),
-    ).toEqual([{ session_id: "g-main" }, { session_id: "w-chat" }]);
+    expect(visible()).toEqual(["g-main", "w-chat"]);
+    expect(retired()).toEqual(["g-extra", "g-inbox", "w-inbox", "w-reply", "w-reply-branch"]);
     expect(db.prepare(`SELECT COUNT(*) AS count FROM cron_discussions`).get()).toEqual({
       count: 0,
     });
-    // the legacy pointer named a deleted thread, so it moves to what is left
+    // the legacy pointer named a hidden thread, so it moves to what is left
     expect(db.prepare(`SELECT session_id FROM projects WHERE id = 'work'`).get()).toEqual({
       session_id: "w-chat",
     });
-
-    const deleted = client.deleteSession.mock.calls.map((call) => call[0]).sort();
-    expect(deleted).toEqual(["g-extra", "g-inbox", "w-inbox", "w-reply", "w-reply-branch"]);
-
-    // Once only: a second pass touches nothing upstream.
-    client.deleteSession.mockClear();
-    await setup.migrateScheduledToGeneral();
+    // Nothing is deleted in Hermes unless someone asks.
     expect(client.deleteSession).not.toHaveBeenCalled();
   });
 
-  it("keeps going past a project whose gateway refuses, and retries it later", async () => {
+  it("deletes the hidden threads only on request, skipping a project Hermes refuses", async () => {
+    client.deleteSession.mockImplementation(async (id: string) => {
+      if (id.startsWith("w-")) throw new Error("401 from the Bot's gateway");
+      return {};
+    });
+
+    expect(await setup.deleteRetiredSessions()).toEqual({ deleted: 2, failed: 3 });
+    expect(retired()).toEqual(["w-inbox", "w-reply", "w-reply-branch"]);
+
+    client.deleteSession.mockReset();
+    client.deleteSession.mockImplementation(async () => ({}));
+    expect(await setup.deleteRetiredSessions()).toEqual({ deleted: 3, failed: 0 });
+    expect(retired()).toEqual([]);
+    const order = client.deleteSession.mock.calls.map((call) => call[0]);
+    // a branch goes before the thread it hangs off
+    expect(order.indexOf("w-reply-branch")).toBeLessThan(order.indexOf("w-reply"));
+    expect(visible()).toEqual(["g-main", "w-chat"]);
+  });
+
+  it("leaves a project visible when it can't get a fresh chat, and finishes it later", async () => {
     db.exec(`
       DELETE FROM app_settings WHERE key = 'scheduled_general_migrated';
       INSERT INTO projects (id, name, session_id, created_at, last_active_at)
-        VALUES ('bot', 'Bot', 'bot-chat', 1, 1), ('other', 'Other', 'o-chat', 1, 1);
+        VALUES ('bot', 'Bot', 'bot-inbox', 1, 1);
       INSERT INTO project_sessions
         (session_id, project_id, title, parent_session_id, created_at, last_active_at, archived, kind)
-        VALUES ('bot-chat', 'bot', 'Chat', NULL, 1, 1, 0, 'chat'),
-               ('bot-inbox', 'bot', 'Scheduled', NULL, 1, 1, 0, 'scheduled'),
-               ('o-chat', 'other', 'Chat', NULL, 1, 1, 0, 'chat'),
-               ('o-inbox', 'other', 'Scheduled', NULL, 1, 1, 0, 'scheduled');
+        VALUES ('bot-inbox', 'bot', 'Scheduled', NULL, 1, 1, 0, 'scheduled');
     `);
-    client.deleteSession.mockImplementation(async (id: string) => {
-      if (id.startsWith("bot-")) throw new Error("401 from the Bot's gateway");
-      return {};
-    });
-    const sessionIds = () =>
-      (db.prepare(`SELECT session_id FROM project_sessions WHERE kind = 'scheduled'`).all() as {
-        session_id: string;
-      }[]).map((row) => row.session_id);
+    client.createSession.mockRejectedValueOnce(new Error("Bot gateway is down"));
     const migrated = () =>
       db.prepare(`SELECT value FROM app_settings WHERE key = 'scheduled_general_migrated'`).get();
 
     await setup.migrateScheduledToGeneral();
-    expect(sessionIds()).toEqual(["bot-inbox"]);
+    expect(visible()).toContain("bot-inbox");
     expect(migrated()).toBeUndefined();
 
-    client.deleteSession.mockImplementation(async () => ({}));
     await setup.migrateScheduledToGeneral();
-    expect(sessionIds()).toEqual([]);
+    expect(visible()).not.toContain("bot-inbox");
+    expect(retired()).toEqual(["bot-inbox"]);
     expect(migrated()).toEqual({ value: "1" });
   });
 });

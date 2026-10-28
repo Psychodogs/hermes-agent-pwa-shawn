@@ -14,6 +14,7 @@ import {
   deleteUpstreamSessions,
   listProjectSessions,
   purgeLocalSessions,
+  retireLocalSessions,
 } from "./project-sessions";
 
 /* Creating General, and retiring the per-project Scheduled inboxes.
@@ -102,13 +103,13 @@ export interface CleanupSession {
 
 export interface CleanupPlan {
   /** project id → session ids, children before parents */
-  deletions: Map<string, string[]>;
+  retire: Map<string, string[]>;
   /** projects that would be left without a chat, and need a fresh one first */
   needsRoot: string[];
 }
 
 /**
- * What the retirement of the Scheduled inbox deletes: every inbox, every
+ * What the retirement of the Scheduled inbox hides: every inbox, every
  * discussion a reply to one spawned, every branch below either, and every
  * General session except the survivor. Never a Bot Chat — it is the Bot's,
  * and the Desktop, the CLI and other Bots all write to it.
@@ -149,15 +150,15 @@ export function planGeneralCleanup(
     queue.push(...(children.get(session.session_id) ?? []));
   }
 
-  const deletions = new Map<string, string[]>();
+  const retire = new Map<string, string[]>();
   for (const session of order.reverse()) {
-    const ids = deletions.get(session.project_id) ?? [];
+    const ids = retire.get(session.project_id) ?? [];
     ids.push(session.session_id);
-    deletions.set(session.project_id, ids);
+    retire.set(session.project_id, ids);
   }
 
   const doomed = new Set(order.map((session) => session.session_id));
-  const needsRoot = [...deletions.keys()].filter(
+  const needsRoot = [...retire.keys()].filter(
     (projectId) =>
       projectId !== general.projectId &&
       !sessions.some(
@@ -168,7 +169,7 @@ export function planGeneralCleanup(
           !doomed.has(session.session_id),
       ),
   );
-  return { deletions, needsRoot };
+  return { retire, needsRoot };
 }
 
 /**
@@ -176,11 +177,14 @@ export function planGeneralCleanup(
  *
  * Every past report is re-homed into General's chat (ordered by its own
  * timestamp, so the history reads as it happened), every binding is pointed
- * at General, and the inboxes and reply threads are deleted here and in
- * Hermes. Destructive by request; the journal gets every id it removes.
+ * at General, and the inboxes and reply threads are hidden from this app.
+ * Only hidden: archived and stamped `retired_at`, with the Hermes sessions
+ * left exactly as they were, because they are the user's transcripts and an
+ * upgrade has no business destroying them. Deleting them is a separate,
+ * explicit request — `deleteRetiredSessions()`, from Settings → Scheduled.
  *
- * Re-runnable after a crash at any step: re-homing is idempotent, deletes
- * tolerate 404, the plan is recomputed from what is left, and the flag is
+ * Re-runnable after a crash at any step: re-homing and hiding are
+ * idempotent, the plan is recomputed from what is left, and the flag is
  * written last. Single-flight, because a route can force a watcher tick.
  */
 export function migrateScheduledToGeneral(): Promise<void> {
@@ -221,7 +225,7 @@ async function runMigration(): Promise<void> {
   const sessions = db
     .prepare(
       `SELECT session_id, project_id, parent_session_id, kind, bot_chat, archived
-         FROM project_sessions`,
+         FROM project_sessions WHERE retired_at IS NULL`,
     )
     .all() as CleanupSession[];
   const discussionIds = new Set(
@@ -230,40 +234,35 @@ async function runMigration(): Promise<void> {
   );
   const plan = planGeneralCleanup(sessions, discussionIds, general);
 
-  // One project failing — a Bot whose profile key is wrong, say — must not
-  // hold the others hostage. Its threads stay until a later pass succeeds,
-  // and the flag is only written once every project has been cleaned.
+  // A project whose fresh chat can't be created (a Bot whose gateway is
+  // down, say) keeps its threads visible until a later pass succeeds; the
+  // others go ahead, and the flag waits for all of them.
   let failed = 0;
   for (const projectId of plan.needsRoot) {
     try {
       await createRootSession(projectId);
     } catch (err) {
       failed += 1;
-      plan.deletions.delete(projectId);
+      plan.retire.delete(projectId);
       console.error(`[cron] could not give ${projectId} a fresh chat; retrying later:`, err);
     }
   }
 
-  for (const [projectId, ids] of plan.deletions) {
-    try {
-      await deleteUpstreamSessions(projectId, ids);
-    } catch (err) {
-      failed += 1;
-      console.error(`[cron] could not delete scheduled threads in ${projectId}; retrying later:`, err);
-      continue;
-    }
-    const doomed = new Set(ids);
+  for (const [projectId, ids] of plan.retire) {
+    const hidden = new Set(ids);
     const replacement =
       projectId === general.projectId
         ? general.sessionId
         : listProjectSessions(projectId)
-            .filter((session) => session.kind === "chat" && !doomed.has(session.session_id))
+            .filter((session) => session.kind === "chat" && !hidden.has(session.session_id))
             .sort((a, b) => b.last_active_at - a.last_active_at)[0]?.session_id;
     if (!replacement) throw new Error(`no chat left in ${projectId} after cleanup`);
-    purgeLocalSessions(projectId, ids, replacement);
+    retireLocalSessions(projectId, ids, replacement);
     console.log(
-      `[cron] retired ${ids.length} scheduled thread(s) in ${projectId}: ${ids.join(", ")}`,
+      `[cron] hid ${ids.length} scheduled thread(s) in ${projectId}, kept in Hermes: ${ids.join(", ")}`,
     );
+    // Gone from every client's list, so clients treat it as a delete and move
+    // off the thread if it was open.
     publishChange("session.deleted", {
       projectId,
       sessionId: ids[ids.length - 1],
@@ -276,4 +275,49 @@ async function runMigration(): Promise<void> {
   db.prepare(`DELETE FROM cron_discussions`).run();
   writeSetting(MIGRATED_KEY, "1");
   console.log(`[cron] scheduled reports now deliver to ${general.projectId}/${general.sessionId}`);
+}
+
+/** Threads the retirement hid, per project, children before parents. */
+export function retiredSessions(): Map<string, string[]> {
+  const rows = db
+    .prepare(
+      `SELECT project_id, session_id FROM project_sessions
+        WHERE retired_at IS NOT NULL AND bot_chat = 0
+        ORDER BY project_id, parent_session_id IS NULL, retired_at`,
+    )
+    .all() as { project_id: string; session_id: string }[];
+  const byProject = new Map<string, string[]>();
+  for (const row of rows) {
+    const ids = byProject.get(row.project_id) ?? [];
+    ids.push(row.session_id);
+    byProject.set(row.project_id, ids);
+  }
+  return byProject;
+}
+
+/**
+ * Deletes the retired threads for good, here and in Hermes. Only ever on an
+ * explicit request; the upgrade itself never calls this.
+ *
+ * A project whose gateway refuses (a Bot with the wrong key) is skipped and
+ * reported rather than failing the rest; asking again retries it, and
+ * Hermes' 404 for an already-deleted session is treated as done.
+ */
+export async function deleteRetiredSessions(): Promise<{ deleted: number; failed: number }> {
+  let deleted = 0;
+  let failed = 0;
+  for (const [projectId, ids] of retiredSessions()) {
+    try {
+      await deleteUpstreamSessions(projectId, ids);
+    } catch (err) {
+      failed += ids.length;
+      console.error(`[cron] could not delete retired threads in ${projectId}:`, err);
+      continue;
+    }
+    // Their pointers were moved when they were hidden, so none to repair.
+    purgeLocalSessions(projectId, ids, null);
+    deleted += ids.length;
+    console.log(`[cron] deleted ${ids.length} retired thread(s) in ${projectId}: ${ids.join(", ")}`);
+  }
+  return { deleted, failed };
 }

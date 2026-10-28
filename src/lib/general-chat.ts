@@ -67,6 +67,7 @@ export function generalSurvivor(projectId: string): GeneralSessionRow | null {
       .prepare(
         `SELECT session_id, archived FROM project_sessions
           WHERE project_id = ? AND kind = 'chat' AND parent_session_id IS NULL
+            AND retired_at IS NULL
             AND session_id NOT IN (SELECT session_id FROM cron_discussions)
           ORDER BY archived ASC, last_active_at DESC, created_at DESC LIMIT 1`,
       )

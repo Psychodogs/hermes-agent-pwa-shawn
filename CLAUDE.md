@@ -431,9 +431,13 @@ say the opposite.
   This replaced a protected, read-only Scheduled inbox per project, where
   replying spawned a new root chat per report (`cron_discussions`). That was
   two conversation models and a sidebar full of one-message threads.
-  `migrateScheduledToGeneral()` re-homed every report into General, deleted
-  the inboxes and reply threads here and in Hermes, and runs once (app_settings
-  `scheduled_general_migrated`). v1 keeps the shape: `scheduledSessionId` /
+  `migrateScheduledToGeneral()` re-homes every report into General, then hides
+  the inboxes and reply threads (archived, stamped `retired_at`) and runs once
+  (app_settings `scheduled_general_migrated`). **It never deletes anything in
+  Hermes.** Those threads are the user's transcripts, and an upgrade has no
+  business destroying them. Settings → Old scheduled threads offers the
+  delete as an explicit, confirmed step (`DELETE /api/scheduled/retired`) for
+  whoever doesn't want them. v1 keeps the shape: `scheduledSessionId` /
   `unreadScheduledCount` now describe General, `kind` is always `chat`, and
   `scheduled/reply` answers 410.
 

@@ -342,10 +342,10 @@ async function deliver(job: HermesJob, file: string) {
 /** One pass. Exported so a route can force a check without waiting 30s. */
 export async function tick(): Promise<void> {
   // Before the early return below: a node whose bindings were all cleared can
-  // still have the retired Scheduled inboxes and reply threads to remove.
-  // Never fatal: reports are re-homed before anything is deleted, so delivery
-  // is safe whatever the cleanup's state, and a Bot whose gateway refuses the
-  // delete must not stop every job from reporting.
+  // still have the retired Scheduled inboxes and reply threads to hide.
+  // Never fatal: reports are re-homed before anything is hidden, so delivery
+  // is safe whatever the cleanup's state, and a Bot whose gateway is down
+  // must not stop every job from reporting.
   try {
     await migrateScheduledToGeneral();
   } catch (err) {

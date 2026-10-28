@@ -18,6 +18,8 @@ export interface ProjectSessionRow {
   kind: "chat" | "scheduled";
   /** 1 when this is the bound Bot's canonical Bot Chat (see bots.ts) */
   bot_chat: number;
+  /** set when the Scheduled-inbox retirement hid this thread */
+  retired_at?: number | null;
 }
 
 export function sessionDto(session: ProjectSessionRow) {
@@ -281,23 +283,46 @@ export async function deleteUpstreamSessions(projectId: string, sessionIds: stri
 }
 
 /**
- * Drops the local rows for a set of sessions in one project, and moves the
- * project's fallback pointers onto `replacementSessionId` if they named one of
- * them. `run_events` has no project_id and no foreign key, so it goes first.
+ * Moves the project's fallback pointers onto `replacementSessionId` when they
+ * named one of `sessionIds`. Runs inside the caller's transaction.
  */
-export function purgeLocalSessions(
-  projectId: string,
-  sessionIds: string[],
-  replacementSessionId: string,
-) {
-  if (sessionIds.length === 0) return;
-  const ids = new Set(sessionIds);
-  const placeholders = sessionIds.map(() => "?").join(",");
+function repointProject(projectId: string, ids: Set<string>, replacementSessionId: string) {
   const project = db
     .prepare(`SELECT session_id, last_chat_session_id FROM projects WHERE id = ?`)
     .get(projectId) as
     | { session_id: string; last_chat_session_id: string | null }
     | undefined;
+  if (
+    !project ||
+    !(ids.has(project.session_id) ||
+      (project.last_chat_session_id && ids.has(project.last_chat_session_id)))
+  ) {
+    return;
+  }
+  const nextLegacy = ids.has(project.session_id) ? replacementSessionId : project.session_id;
+  const nextLastChat =
+    project.last_chat_session_id && !ids.has(project.last_chat_session_id)
+      ? project.last_chat_session_id
+      : replacementSessionId;
+  db.prepare(
+    `UPDATE projects SET session_id = ?, last_chat_session_id = ? WHERE id = ?`,
+  ).run(nextLegacy, nextLastChat, projectId);
+}
+
+/**
+ * Drops the local rows for a set of sessions in one project, and moves the
+ * project's fallback pointers onto `replacementSessionId` if they named one of
+ * them. `run_events` has no project_id and no foreign key, so it goes first.
+ * A null replacement skips the pointer repair, for sessions no pointer can
+ * name any more (retired ones were repointed when they were hidden).
+ */
+export function purgeLocalSessions(
+  projectId: string,
+  sessionIds: string[],
+  replacementSessionId: string | null,
+) {
+  if (sessionIds.length === 0) return;
+  const placeholders = sessionIds.map(() => "?").join(",");
 
   db.transaction(() => {
     db.prepare(
@@ -317,22 +342,29 @@ export function purgeLocalSessions(
     db.prepare(
       `DELETE FROM project_sessions WHERE project_id = ? AND session_id IN (${placeholders})`,
     ).run(projectId, ...sessionIds);
-    if (
-      project &&
-      (ids.has(project.session_id) ||
-        (project.last_chat_session_id && ids.has(project.last_chat_session_id)))
-    ) {
-      const nextLegacy = ids.has(project.session_id)
-        ? replacementSessionId
-        : project.session_id;
-      const nextLastChat =
-        project.last_chat_session_id && !ids.has(project.last_chat_session_id)
-          ? project.last_chat_session_id
-          : replacementSessionId;
-      db.prepare(
-        `UPDATE projects SET session_id = ?, last_chat_session_id = ? WHERE id = ?`,
-      ).run(nextLegacy, nextLastChat, projectId);
-    }
+    if (replacementSessionId) repointProject(projectId, new Set(sessionIds), replacementSessionId);
+  })();
+}
+
+/**
+ * Hides sessions from this app without touching Hermes: archived, and stamped
+ * `retired_at` so they can be told apart from anything archived by hand and
+ * deleted later on request. Their transcripts stay reachable from the CLI
+ * and every other Hermes client.
+ */
+export function retireLocalSessions(
+  projectId: string,
+  sessionIds: string[],
+  replacementSessionId: string,
+) {
+  if (sessionIds.length === 0) return;
+  const placeholders = sessionIds.map(() => "?").join(",");
+  db.transaction(() => {
+    db.prepare(
+      `UPDATE project_sessions SET archived = 1, retired_at = ?
+        WHERE project_id = ? AND session_id IN (${placeholders})`,
+    ).run(Date.now(), projectId, ...sessionIds);
+    repointProject(projectId, new Set(sessionIds), replacementSessionId);
   })();
 }
 

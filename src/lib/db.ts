@@ -256,6 +256,10 @@ function migrate(db: Database.Database) {
   // deleted from here, and kind stays 'chat' for every client that reads it.
   addColumn(db, "project_sessions", "bot_chat", "INTEGER NOT NULL DEFAULT 0");
   addColumn(db, "project_sessions", "kind", "TEXT NOT NULL DEFAULT 'chat'");
+  // Set when retiring the per-project Scheduled inboxes hid this thread (see
+  // general-chat-setup.ts). Hidden is all that happens by default — the
+  // Hermes session is kept — and Settings → Scheduled can delete these later.
+  addColumn(db, "project_sessions", "retired_at", "INTEGER");
   addColumn(db, "queued_messages", "session_id", "TEXT");
   db.exec(`CREATE INDEX IF NOT EXISTS idx_queued_session
     ON queued_messages(project_id, session_id, created_at)`);

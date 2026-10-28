@@ -208,6 +208,7 @@ export function SettingsView({ version }: { version: string }) {
 
           <NotificationsSection />
           <ScheduledSection />
+          <RetiredThreadsSection />
           <ConnectionSection />
           <BotsSection />
           <ArchivedSection />
@@ -616,6 +617,100 @@ function BotsSection() {
           control={<Meta>{bot.status === "ready" ? `@${bot.handle}` : bot.status.replace("_", " ")}</Meta>}
         />
       ))}
+    </SettingsSection>
+  );
+}
+
+/* What retiring the per-project Scheduled inboxes hid: the inboxes and the
+ * threads that replying to a report used to spawn. The upgrade only hides
+ * them, because they are transcripts in Hermes and some people want to keep
+ * them; deleting them is this explicit, confirmed step. Gone once empty. */
+function RetiredThreadsSection() {
+  const [count, setCount] = useState<number | null>(null);
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [reload, setReload] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const res = await fetch("/api/scheduled/retired");
+        const body = (await res.json()) as { count?: number };
+        if (!cancelled) setCount(body.count ?? 0);
+      } catch {
+        if (!cancelled) setCount(0);
+      }
+    };
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [reload]);
+
+  async function remove() {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/scheduled/retired", { method: "DELETE" });
+      const body = (await res.json().catch(() => ({}))) as { failed?: number };
+      if (!res.ok) {
+        setError(
+          `${body.failed ?? "Some"} couldn't be deleted — Hermes refused. They're still hidden; try again later.`,
+        );
+      }
+    } catch {
+      setError("Could not reach the server.");
+    } finally {
+      setBusy(false);
+      setConfirming(false);
+      setReload((n) => n + 1);
+    }
+  }
+
+  if (!count) return null;
+  const threads = `${count} thread${count === 1 ? "" : "s"}`;
+
+  return (
+    <SettingsSection
+      title="Old scheduled threads"
+      description="Scheduled reports used to arrive in a Scheduled inbox per project, with a new thread for every reply. They now land in the General chat, and the old threads are hidden here but kept in Hermes."
+    >
+      {!confirming ? (
+        <SettingsAction
+          label={`${threads} kept in Hermes`}
+          hint={error ?? "Still reachable from the Hermes CLI and dashboard. Delete them if you don't need them."}
+          actionLabel="Delete…"
+          tone="danger"
+          onAction={() => setConfirming(true)}
+        />
+      ) : (
+        <SettingsRow
+          label={`Delete ${threads} for good?`}
+          hint="Removes them here and in Hermes. Their reports already live in the General chat. This can't be undone."
+          control={
+            <span className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => setConfirming(false)}
+                className={buttonClass("secondary", "sm")}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void remove()}
+                className={buttonClass("ghost-danger", "sm")}
+              >
+                {busy ? "Deleting…" : "Delete"}
+              </button>
+            </span>
+          }
+        />
+      )}
     </SettingsSection>
   );
 }
