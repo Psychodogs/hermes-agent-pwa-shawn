@@ -1,4 +1,4 @@
-import { hermes } from "@/lib/hermes";
+import { hermesForProject } from "@/lib/bots";
 import {
   deleteSessionSubtree,
   getProjectSession,
@@ -17,7 +17,7 @@ export async function GET(_request: Request, ctx: Context) {
   if (!session) return Response.json({ error: "not found" }, { status: 404 });
   let messageCount: number | null = null;
   try {
-    const upstream = await hermes.getSession(sessionId);
+    const upstream = await hermesForProject(id).getSession(sessionId);
     if (typeof upstream.message_count === "number") messageCount = upstream.message_count;
   } catch {
     // Metadata remains usable while Hermes is temporarily unavailable.
@@ -64,6 +64,12 @@ export async function DELETE(_request: Request, ctx: Context) {
     if (result.kind === "protected_session") {
       return Response.json(
         { error: "the Scheduled session cannot be deleted" },
+        { status: 409 },
+      );
+    }
+    if (result.kind === "protected_bot_chat") {
+      return Response.json(
+        { error: "a Bot Chat belongs to its Bot and cannot be deleted here" },
         { status: 409 },
       );
     }

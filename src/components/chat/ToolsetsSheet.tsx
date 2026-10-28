@@ -5,6 +5,7 @@ import { Sheet } from "@/components/ui/Sheet";
 import { IconCross, IconWrench } from "@/components/primitives/icons";
 import { ICON_BUTTON } from "@/components/ui/SettingsControls";
 import type { HermesToolset } from "@/lib/hermes";
+import { botQuery, useProjectBot } from "@/components/ProjectBotContext";
 
 /* GET /v1/toolsets, rendered.
  *
@@ -16,11 +17,12 @@ import type { HermesToolset } from "@/lib/hermes";
 export function ToolsetsSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [toolsets, setToolsets] = useState<HermesToolset[] | null>(null);
   const [unavailable, setUnavailable] = useState(false);
+  const bot = useProjectBot();
 
   useEffect(() => {
     if (!open || toolsets) return;
     let cancelled = false;
-    fetch("/api/toolsets")
+    fetch(`/api/toolsets${botQuery(bot)}`)
       .then((r) => r.json())
       .then((body: { toolsets?: HermesToolset[]; unavailable?: boolean }) => {
         if (cancelled) return;
@@ -36,7 +38,7 @@ export function ToolsetsSheet({ open, onClose }: { open: boolean; onClose: () =>
     return () => {
       cancelled = true;
     };
-  }, [open, toolsets]);
+  }, [open, toolsets, bot]);
 
   // Enabled first: what's live matters more than what could be.
   const sorted = [...(toolsets ?? [])].sort(

@@ -13,10 +13,17 @@ import {
   buttonClass,
 } from "@/components/ui/SettingsControls";
 import { SkillPicker, useSkillCatalogue } from "./SkillPicker";
+import { useAgentName } from "@/components/AgentNameContext";
+import { botStatusText, useBots } from "@/hooks/useBots";
 
 /* A project is a long-lived thread, not a session — name it once and come
  * back to it for weeks. cwd is optional metadata we keep on our side;
- * api_server.py's session response has no cwd field to mirror it into. */
+ * api_server.py's session response has no cwd field to mirror it into.
+ *
+ * With Hermes Bot Mode a project can also be bound to a Bot (a profile): it
+ * runs as that Bot, and by default opens onto the Bot's own "Bot Chat" — the
+ * one durable session Hermes gives the roster and message_agent. The binding
+ * is chosen here and only here; see bots.ts for why it can't change later. */
 
 export function NewProjectDialog({
   open,
@@ -55,7 +62,16 @@ function NewProjectForm({
   const [templateId, setTemplateId] = useState("blank");
   const [instructions, setInstructions] = useState("");
   const [skills, setSkills] = useState<string[]>([]);
-  const catalogue = useSkillCatalogue();
+  const agentName = useAgentName();
+  const roster = useBots();
+  const [bot, setBot] = useState<string | null>(null);
+  const [botChat, setBotChat] = useState(true);
+  const selectedBot = roster?.bots.find((candidate) => candidate.id === bot) ?? null;
+  // The default profile is only a Bot through its Bot Chat; without it, it is
+  // the same agent every unbound project already talks to.
+  const botChatAvailable = selectedBot !== null && !selectedBot.botChatProjectId;
+  const useBotChat = botChatAvailable && (botChat || selectedBot?.id === "default");
+  const catalogue = useSkillCatalogue(bot === "default" ? null : bot);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -81,6 +97,7 @@ function NewProjectForm({
           instructions: instructions.trim() || null,
           skills,
           emoji: PROJECT_TEMPLATES.find((t) => t.id === templateId)?.emoji,
+          ...(selectedBot ? { bot: selectedBot.id, botChat: useBotChat } : {}),
         }),
       });
       if (!res.ok) {
@@ -146,6 +163,82 @@ function NewProjectForm({
               aria-label="Project name"
               className={FIELD_CLASS}
             />
+            {roster && roster.bots.length > 0 && (
+              <div>
+                <span className={LABEL_CLASS}>Bot</span>
+                <div className="mt-1.5 flex flex-wrap gap-2" role="group" aria-label="Bot">
+                  {[
+                    { id: null, name: agentName, disabledReason: null as string | null },
+                    ...roster.bots.map((candidate) => ({
+                      id: candidate.id as string | null,
+                      // The default profile is the install's own agent; as a
+                      // choice it only ever means its Bot Chat, so say that.
+                      name: candidate.id === "default" ? `${candidate.name} Bot Chat` : candidate.name,
+                      disabledReason:
+                        botStatusText(candidate) ??
+                        // The default profile is offered only as its Bot Chat.
+                        (candidate.id === "default" && candidate.botChatProjectId
+                          ? "Bot Chat already open here"
+                          : null),
+                    })),
+                  ].map((option) => {
+                    const active = option.id === bot;
+                    return (
+                      <button
+                        key={option.id ?? "__agent"}
+                        type="button"
+                        aria-pressed={active}
+                        disabled={option.disabledReason !== null}
+                        title={option.disabledReason ?? undefined}
+                        onClick={() => {
+                          setBot(option.id);
+                          // Another Bot has other skills; keep none that may not exist there.
+                          setSkills([]);
+                          if (option.id && !name.trim()) {
+                            setName(roster.bots.find((b) => b.id === option.id)?.name ?? option.name);
+                          }
+                        }}
+                        className={`h-8 rounded-full px-3 text-label transition-[transform,background-color,color]
+                          duration-150 enabled:active:scale-[0.97] disabled:opacity-40 ${
+                            active
+                              ? "bg-ink font-medium text-page"
+                              : "bg-field text-ink-2 enabled:hover:text-ink"
+                          }`}
+                      >
+                        {option.name}
+                      </button>
+                    );
+                  })}
+                </div>
+                {selectedBot && selectedBot.id !== "default" && (
+                  <label className="mt-2.5 flex items-start gap-2.5 text-label text-ink-2">
+                    <input
+                      type="checkbox"
+                      checked={useBotChat}
+                      disabled={!botChatAvailable}
+                      onChange={(event) => setBotChat(event.target.checked)}
+                      className="mt-0.5 size-4 shrink-0 accent-[var(--ink)]"
+                    />
+                    <span>
+                      {botChatAvailable
+                        ? `Open ${selectedBot.name}'s Bot Chat — the same conversation the Hermes desktop app and CLI see.`
+                        : `${selectedBot.name}'s Bot Chat is already a project here, so this starts a new chat with it.`}
+                    </span>
+                  </label>
+                )}
+                {useBotChat && !roster.managed && (
+                  <p className={`mt-1.5 ${HELP_CLASS}`}>
+                    Bot Mode isn&apos;t set up on this Hermes, so this Bot can&apos;t message
+                    the others yet.
+                  </p>
+                )}
+                {roster.bots.some((candidate) => candidate.status !== "ready") && (
+                  <p className={`mt-1.5 ${HELP_CLASS}`}>
+                    Greyed-out Bots need attention — Settings → Bots says what.
+                  </p>
+                )}
+              </div>
+            )}
             <input
               value={cwd}
               onChange={(event) => setCwd(event.target.value)}

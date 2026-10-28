@@ -185,6 +185,13 @@ export interface Project {
   created_at: number;
   last_active_at: number;
   archived: number;
+  /**
+   * The Hermes profile (Bot) this project runs as, fixed at creation. NULL is
+   * the default profile — every project from before Bot Mode support.
+   */
+  profile?: string | null;
+  /** The Bot's name, which stands in for the agent's name in this project. */
+  bot_name?: string | null;
 }
 
 export interface ProjectSession {
@@ -196,4 +203,6 @@ export interface ProjectSession {
   last_active_at: number;
   archived: number;
   kind: "chat" | "scheduled";
+  /** 1 on a Bot's canonical "Bot Chat" — never renamed upstream or deleted here */
+  bot_chat?: number;
 }

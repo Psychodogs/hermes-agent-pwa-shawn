@@ -61,6 +61,7 @@ VAPID_PUBLIC_KEY=<from: npx web-push generate-vapid-keys>
 VAPID_PRIVATE_KEY=<same command>
 VAPID_SUBJECT=<optional; a routable mailto: or https: URL>
 HERMES_CRON_DIR=/home/<gateway user>/.hermes/cron
+HERMES_HOME=/home/<gateway user>/.hermes   # Bot Mode profiles; optional
 FIREBASE_PROJECT_ID=<optional Firebase project for Android push>
 GOOGLE_APPLICATION_CREDENTIALS=</outside/repo/service-account.json>
 ```

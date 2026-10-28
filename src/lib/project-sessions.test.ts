@@ -36,6 +36,7 @@ function session(kind: "chat" | "scheduled", id = `session-${kind}`): ProjectSes
     last_active_at: 2,
     archived: 0,
     kind,
+    bot_chat: 0,
   };
 }
 

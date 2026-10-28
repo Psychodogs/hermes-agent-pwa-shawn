@@ -41,6 +41,7 @@ import { useAppActions } from "@/components/AppActionsContext";
 import { usePreferences } from "@/components/PreferencesContext";
 import { useStatus } from "@/hooks/useStatus";
 import { useModels } from "@/hooks/useModels";
+import { ProjectBotProvider } from "@/components/ProjectBotContext";
 import { IconChevronDown } from "@/components/primitives/icons";
 import type { SlashCommand } from "@/lib/commands";
 import type {
@@ -60,15 +61,22 @@ function parseModelOptions(raw: string | null): ModelOptions {
   }
 }
 
-export function ChatThread({
-  project,
-  session,
-  initialMessages,
-}: {
+type ChatThreadProps = {
   project: Project;
   session: ProjectSession;
   initialMessages: ThreadMessage[];
-}) {
+};
+
+/** A Bot's project reads its catalogues from, and speaks as, that Bot. */
+export function ChatThread(props: ChatThreadProps) {
+  return (
+    <ProjectBotProvider profile={props.project.profile} name={props.project.bot_name}>
+      <ChatThreadBody {...props} />
+    </ProjectBotProvider>
+  );
+}
+
+function ChatThreadBody({ project, session, initialMessages }: ChatThreadProps) {
   const projectId = project.id;
   const scheduled = session.kind === "scheduled";
   const thread = useThread(projectId, session.session_id, initialMessages);
@@ -96,7 +104,7 @@ export function ChatThread({
   /* Shared with the picker so the inventory is fetched once. Its `current` is
    * the only honest source for the gateway's model — /v1/capabilities reports
    * the virtual "hermes-agent" alias, which is not a model anyone selected. */
-  const { payload: models, refreshing, refresh } = useModels();
+  const { payload: models, refreshing, refresh } = useModels(project.profile ?? null);
   const gatewayModel = models?.current.model ?? null;
   const { prefs, reduceMotion } = usePreferences();
 

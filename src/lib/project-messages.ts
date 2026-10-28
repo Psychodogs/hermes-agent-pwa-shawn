@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { hermes } from "./hermes";
+import { hermesForProject } from "./bots";
 import { deliveriesFor } from "./cron-watcher";
 import { mergeProjectMessages } from "./message-normalization";
 
@@ -10,7 +10,7 @@ export async function messagesForSession(projectId: string, sessionId: string) {
     )
     .get(projectId, sessionId);
   if (!session) return null;
-  const response = await hermes.getMessages(sessionId);
+  const response = await hermesForProject(projectId).getMessages(sessionId);
   return mergeProjectMessages(response.data, deliveriesFor(projectId, sessionId));
 }
 

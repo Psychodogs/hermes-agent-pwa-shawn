@@ -90,6 +90,15 @@ describe("Scheduled inbox migration", () => {
     ).toEqual({ count: 0 });
   });
 
+  it("leaves every pre-Bot-Mode project on the default profile", () => {
+    expect(
+      migrated.prepare(`SELECT profile FROM projects WHERE id = 'project'`).get(),
+    ).toEqual({ profile: null });
+    expect(
+      migrated.prepare(`SELECT bot_chat FROM project_sessions WHERE session_id = 'chat'`).get(),
+    ).toEqual({ bot_chat: 0 });
+  });
+
   it("enforces one valid Scheduled session per project", () => {
     migrated.prepare(
       `INSERT INTO project_sessions

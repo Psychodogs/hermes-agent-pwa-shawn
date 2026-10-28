@@ -1,4 +1,4 @@
-import { hermes } from "@/lib/hermes";
+import { hermesFor } from "@/lib/hermes";
 
 // Zero-argument GET — see the note in /api/models.
 export const dynamic = "force-dynamic";
@@ -8,9 +8,11 @@ export const dynamic = "force-dynamic";
  * this agent actually do", which otherwise costs a turn of asking the model
  * and trusting what it says.
  */
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const res = await hermes.toolsets();
+    // ?bot=<profile>: each Bot's config decides its own toolsets.
+    const bot = new URL(request.url).searchParams.get("bot");
+    const res = await hermesFor(bot).toolsets();
     return Response.json({ toolsets: res.data ?? [] });
   } catch {
     return Response.json({ toolsets: [], unavailable: true });

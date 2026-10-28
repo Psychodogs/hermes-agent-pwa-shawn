@@ -1,4 +1,4 @@
-import { hermes, type HermesModelProvider } from "@/lib/hermes";
+import { hermesFor, normalizeProfile, type HermesModelProvider } from "@/lib/hermes";
 
 // Zero-argument GET: without this Next prerenders it at build time and serves
 // the build-time snapshot forever (this shipped as a bug once, on /api/skills).
@@ -19,7 +19,12 @@ interface CachedPayload {
 
 // Pinned to globalThis for the same reason the db handle is: HMR reloads this
 // module on every edit and would otherwise drop the cache each time.
-const globalForModels = globalThis as unknown as { __hermesPwaModels?: CachedPayload };
+// Keyed by profile: each Bot has its own providers, credentials and default
+// model, so one Bot's inventory is not another's. "" is the default profile.
+const globalForModels = globalThis as unknown as {
+  __hermesPwaModelsByProfile?: Map<string, CachedPayload>;
+};
+const modelCache = (globalForModels.__hermesPwaModelsByProfile ??= new Map());
 
 export interface ModelChoice {
   id: string;
@@ -82,14 +87,22 @@ function flatten(providers: HermesModelProvider[]): ModelProviderView[] {
 }
 
 export async function GET(req: Request) {
-  const refresh = new URL(req.url).searchParams.get("refresh") === "1";
-  const cached = globalForModels.__hermesPwaModels;
+  const params = new URL(req.url).searchParams;
+  const refresh = params.get("refresh") === "1";
+  let profile: string | null;
+  try {
+    profile = normalizeProfile(params.get("bot"));
+  } catch {
+    return Response.json({ error: "invalid bot" }, { status: 400 });
+  }
+  const cacheKey = profile ?? "";
+  const cached = modelCache.get(cacheKey);
   if (!refresh && cached && Date.now() - cached.at < TTL_MS) {
     return Response.json(cached.body);
   }
 
   try {
-    const res = await hermes.modelOptions(refresh);
+    const res = await hermesFor(profile).modelOptions(refresh);
     const body: ModelsPayload = {
       providers: flatten(res.providers ?? []),
       current: {
@@ -97,7 +110,7 @@ export async function GET(req: Request) {
         provider: typeof res.provider === "string" ? res.provider : null,
       },
     };
-    globalForModels.__hermesPwaModels = { at: Date.now(), body };
+    modelCache.set(cacheKey, { at: Date.now(), body });
     return Response.json(body);
   } catch {
     // Serve a stale cache over an error: a model list from ten minutes ago is

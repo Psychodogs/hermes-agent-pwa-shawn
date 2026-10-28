@@ -4,9 +4,10 @@ import { getAgentName } from "./app-settings";
 import { APP_SLUG } from "./branding";
 import { db, pruneOldRunEvents } from "./db";
 import {
-  hermes,
+  hermesFor,
   HermesApiError,
   type ConversationHistoryEntry,
+  type HermesClient,
   type HermesContentPart,
 } from "./hermes";
 import { composeInstructions, parseSkills } from "./instructions";
@@ -60,6 +61,8 @@ interface ProjectRow {
   provider: string | null;
   model_options: string | null;
   archived: number;
+  /** the Hermes profile (Bot) this project runs as; NULL = default */
+  profile: string | null;
 }
 
 interface RunRow {
@@ -224,6 +227,20 @@ class RunManager extends EventEmitter {
       .get(projectId, ...ACTIVE_RUN_STATUSES) as RunRow | undefined;
   }
 
+  /** Every Hermes call for a project goes to its profile's `/p/<id>/` mirror. */
+  private clientFor(projectId: string): HermesClient {
+    return hermesFor(this.getProject(projectId)?.profile ?? null);
+  }
+
+  /**
+   * A run id is only meaningful under the profile that started it, so the
+   * run's own project decides — never the default listener by assumption.
+   */
+  private clientForRun(runId: string): HermesClient {
+    const run = this.getRun(runId);
+    return run ? this.clientFor(run.project_id) : hermesFor(null);
+  }
+
   getRun(runId: string): RunRow | undefined {
     return db.prepare(`SELECT * FROM runs WHERE run_id = ?`).get(runId) as
       | RunRow
@@ -316,7 +333,7 @@ class RunManager extends EventEmitter {
    */
   private async trySteer(runId: string, text: string): Promise<boolean> {
     try {
-      const res = await hermes.steerRun(runId, text);
+      const res = await this.clientForRun(runId).steerRun(runId, text);
       if (!res?.accepted) return false;
       // api_server emits its own run.steered, and consumeStream persists it —
       // but it carries only `accepted`, never the text. This second row is
@@ -340,6 +357,7 @@ class RunManager extends EventEmitter {
   }
 
   private async buildConversationHistory(
+    client: HermesClient,
     sessionId: string,
   ): Promise<ConversationHistoryEntry[]> {
     const scheduled = db
@@ -352,7 +370,7 @@ class RunManager extends EventEmitter {
       .get(sessionId) as ScheduledReportContext | undefined;
     let history: ConversationHistoryEntry[] = [];
     try {
-      const res = await hermes.getMessages(sessionId);
+      const res = await client.getMessages(sessionId);
       history = res.data
         .filter(
           (m) =>
@@ -382,10 +400,12 @@ class RunManager extends EventEmitter {
       throw new Error(`Unknown session: ${targetSessionId}`);
     }
 
+    const client = hermesFor(project.profile);
     const conversationHistory = await this.buildConversationHistory(
+      client,
       targetSessionId,
     );
-    const { run_id: runId } = await hermes.startRun({
+    const { run_id: runId } = await client.startRun({
       sessionId: targetSessionId,
       input: composeInput(text, attachments),
       conversationHistory,
@@ -510,20 +530,27 @@ class RunManager extends EventEmitter {
       .all(runId) as { event_json: string }[];
 
     let text = "";
+    let output = "";
     for (const row of rows) {
       try {
         const event = JSON.parse(row.event_json) as {
           event?: string;
           delta?: unknown;
+          output?: unknown;
         };
         if (event.event === "message.delta" && typeof event.delta === "string") {
           text += event.delta;
+        } else if (event.event === "run.completed" && typeof event.output === "string") {
+          output = event.output;
         }
       } catch {
         // a malformed row must not cost the notification
       }
     }
-    return text;
+    // A turn into a Bot Chat that the Desktop holds live, or one admitted
+    // under session authority, runs in the owner's mailbox. Its stream has no
+    // deltas, only a run.completed that carries the whole reply.
+    return text || output;
   }
 
   /**
@@ -682,7 +709,7 @@ class RunManager extends EventEmitter {
    * life. Returns true when the stream ended on a real terminal event.
    */
   private async consumeStream(runId: string): Promise<boolean> {
-    const res = await hermes.streamRunEvents(runId);
+    const res = await this.clientForRun(runId).streamRunEvents(runId);
     const body = res.body;
     if (!body) throw new Error("Hermes run stream had no body");
 
@@ -771,7 +798,7 @@ class RunManager extends EventEmitter {
 
   private async isStillRunning(runId: string): Promise<boolean> {
     try {
-      const run = await hermes.getRun(runId);
+      const run = await this.clientForRun(runId).getRun(runId);
       return !TERMINAL_STATUSES.has(run.status);
     } catch {
       return false;
@@ -792,7 +819,7 @@ class RunManager extends EventEmitter {
       await new Promise((resolve) => setTimeout(resolve, delay));
       delay = Math.min(delay * 2, 15_000);
       try {
-        const run = await hermes.getRun(runId);
+        const run = await this.clientForRun(runId).getRun(runId);
         consecutiveErrors = 0;
         if (TERMINAL_STATUSES.has(run.status)) return run.status;
       } catch (err) {
@@ -823,7 +850,7 @@ class RunManager extends EventEmitter {
   }
 
   async stopRun(runId: string) {
-    await hermes.stopRun(runId);
+    await this.clientForRun(runId).stopRun(runId);
   }
 
   async approveRun(
@@ -831,7 +858,7 @@ class RunManager extends EventEmitter {
     choice: "once" | "session" | "always" | "deny",
     all?: boolean,
   ) {
-    await hermes.approveRun(runId, choice, all);
+    await this.clientForRun(runId).approveRun(runId, choice, all);
   }
 
   /** Replays persisted events after `afterSeq`, then live-streams new ones until unsubscribed. */

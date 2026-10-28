@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { IconCheck, IconCross, IconPlus } from "@/components/primitives/icons";
 import { FIELD_CLASS, HELP_CLASS } from "@/components/ui/SettingsControls";
 import type { HermesSkill } from "@/lib/hermes";
+import { botQuery } from "@/components/ProjectBotContext";
 
 /* Skills are linked by name, never inlined. Hermes can preload a skill's full
  * text (agent/skill_commands.py:564), but installed skills reach ~100KB —
@@ -12,11 +13,11 @@ import type { HermesSkill } from "@/lib/hermes";
 
 /** Fetches the catalogue once per mount. Empty on failure so the picker
  *  degrades to showing whatever is already linked rather than breaking. */
-export function useSkillCatalogue() {
+export function useSkillCatalogue(bot: string | null = null) {
   const [catalogue, setCatalogue] = useState<HermesSkill[]>([]);
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/skills")
+    fetch(`/api/skills${botQuery(bot)}`)
       .then((r) => r.json())
       .then((body: { skills?: HermesSkill[] }) => {
         if (!cancelled) setCatalogue(body.skills ?? []);
@@ -25,7 +26,7 @@ export function useSkillCatalogue() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [bot]);
   return catalogue;
 }
 

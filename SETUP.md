@@ -112,6 +112,10 @@ Notes on the ones with teeth:
   every job's output under `<cron dir>/output/<job id>/` and this app reads it
   off disk. Ask for the path (`HERMES_CRON_DIR`, default `~/.hermes/cron`) and
   check the service user can read it — Hermes creates that directory `0700`.
+  The same goes for `HERMES_HOME` (default `~/.hermes`), which is read only for
+  Bot Mode: each Bot's `profiles/<id>/profile.yaml` and the `API_SERVER_KEY` in
+  its `.env`. If that `.env` can't be readable by the service user, set
+  `HERMES_PROFILE_<ID>_KEY` in this app's environment instead.
 - **The agent's name** is not needed at install time; it is set in the app under
   Settings → Agent, is stored server-side and is shared by every device. Ask
   now so you can set it for them at the end.
@@ -141,6 +145,7 @@ HERMES_API_URL=http://127.0.0.1:8642
 HERMES_API_KEY=<same value as the gateway's API_SERVER_KEY>
 DB_PATH=/home/<user>/.hermes-pwa/state.db
 HERMES_CRON_DIR=/home/<gateway user>/.hermes/cron
+HERMES_HOME=/home/<gateway user>/.hermes
 VAPID_PUBLIC_KEY=
 VAPID_PRIVATE_KEY=
 VAPID_SUBJECT=
@@ -316,6 +321,8 @@ Worth telling them, because it is the difference between this and a chat app:
 | Android Notifications says unavailable | The server lacks `FIREBASE_PROJECT_ID`, or the APK was built without `android/app/google-services.json` | Configure the matching Firebase project and rebuild the APK |
 | Model picker, Steer or Toolsets missing | The gateway does not advertise the capability | Upgrade Hermes; the app hides rather than 404s, by design |
 | Scheduled jobs never reach a project | `HERMES_CRON_DIR` wrong, or unreadable by the service user | Hermes creates it `0700`; fix the path or the permissions |
+| A Bot is greyed out in New project | That profile has no `API_SERVER_KEY` of its own — the gateway rejects the default key under `/p/<profile>/` | Add one to `~/.hermes/profiles/<id>/.env` (or set `HERMES_PROFILE_<ID>_KEY`); Settings → Bots names the file |
+| Settings → Bots says "not served" | The gateway answers 404 for the prefix: the profile is parked or standalone, or Hermes predates profile routing | Unpark it (`hermes -p <id> gateway run`) or upgrade Hermes |
 | `/api/jobs` returns 501 | The gateway has no cron module | Nothing to fix; the Scheduled section stays empty |
 | A paused job looks deleted | The list must be fetched with `include_disabled=true` | Already handled; if you see it, file it |
 | A `/` command arrives as literal text in the reply | Slash commands are **not** routed by `api_server.py` — it never imports the gateway's slash-command module | Expected. The app carries its own catalogue and marks unroutable commands greyed |

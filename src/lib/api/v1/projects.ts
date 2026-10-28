@@ -19,6 +19,8 @@ interface StoredProject {
   created_at: number;
   last_active_at: number;
   archived: number;
+  profile?: string | null;
+  bot_name?: string | null;
 }
 
 function parseObject(raw: string | null): Record<string, unknown> | null {
@@ -73,6 +75,9 @@ export function projectDto(project: StoredProject) {
     createdAt: project.created_at,
     lastActiveAt: project.last_active_at,
     archived: project.archived === 1,
+    bot: project.profile
+      ? { id: project.profile, name: project.bot_name ?? project.profile }
+      : null,
   };
 }
 

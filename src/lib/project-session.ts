@@ -1,4 +1,4 @@
-import { hermes, HermesApiError } from "./hermes";
+import { hermes, HermesApiError, type HermesClient } from "./hermes";
 
 /* Hermes session titles are globally unique (SessionDB enforces it), but a
  * project name in this app is just a label the user picked. Those two things
@@ -29,11 +29,12 @@ function* titleCandidates(base: string): Generator<string> {
 export async function createProjectSession(
   sessionId: string,
   name: string,
+  client: HermesClient = hermes,
 ): Promise<string> {
   let lastErr: unknown;
   for (const title of titleCandidates(name)) {
     try {
-      await hermes.createSession({ id: sessionId, title });
+      await client.createSession({ id: sessionId, title });
       return title;
     } catch (err) {
       if (!isTitleTaken(err)) throw err;
@@ -48,11 +49,12 @@ export async function createProjectSession(
 export async function renameProjectSession(
   sessionId: string,
   name: string,
+  client: HermesClient = hermes,
 ): Promise<string> {
   let lastErr: unknown;
   for (const title of titleCandidates(name)) {
     try {
-      await hermes.patchSession(sessionId, { title });
+      await client.patchSession(sessionId, { title });
       return title;
     } catch (err) {
       if (!isTitleTaken(err)) throw err;

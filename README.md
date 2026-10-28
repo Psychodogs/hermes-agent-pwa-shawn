@@ -85,6 +85,12 @@ push notifications can exist.
   take priority when opening a project, and replying starts a normal chat with
   the exact report retained as context. Hermes cannot deliver to a PWA, so the
   app reads the output files the gateway writes to disk.
+- **Bots.** With Hermes [Bot Mode](https://hermes-agent.nousresearch.com/docs/user-guide/bot-mode),
+  a project can be bound to a Bot (a Hermes profile) and open that Bot's own
+  *Bot Chat*: the same conversation the desktop app and CLI see, with its
+  memory, skills, model and `message_agent`. Each Bot needs its own
+  `API_SERVER_KEY` in its profile's `.env`; Settings → Bots says which ones
+  are missing.
 - **Attachments both ways.** Images inline; other files are written to the host
   and named by path, because that is the only shape the API accepts.
 - **Search** over project names, instructions and opening prompts. Message

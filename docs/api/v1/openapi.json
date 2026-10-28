@@ -722,7 +722,16 @@
           "unreadScheduledCount": { "type": "integer", "minimum": 0 },
           "createdAt": { "type": "integer" },
           "lastActiveAt": { "type": "integer" },
-          "archived": { "type": "boolean" }
+          "archived": { "type": "boolean" },
+          "bot": {
+            "type": ["object", "null"],
+            "description": "The Hermes profile (Bot Mode Bot) this project runs as, fixed at creation; null is the default profile. Absent from servers that predate Bot Mode support.",
+            "required": ["id", "name"],
+            "properties": {
+              "id": { "type": "string", "description": "Canonical profile id; \"default\" for the gateway's own profile." },
+              "name": { "type": "string", "description": "The Bot's display name, which stands in for the agent's name in this project." }
+            }
+          }
         }
       },
       "CreateProject": {
@@ -736,7 +745,9 @@
           "instructions": { "type": ["string", "null"] },
           "pinned": { "type": "boolean" },
           "skills": { "type": "array", "items": { "type": "string" } },
-          "template": { "type": "string" }
+          "template": { "type": "string" },
+          "bot": { "type": "string", "description": "Bind the new project to this Hermes profile id. Cannot be changed later." },
+          "botChat": { "type": "boolean", "default": true, "description": "With bot: open the Bot's canonical Bot Chat rather than a new session. 409 when another project already holds it." }
         },
         "additionalProperties": false
       },
@@ -766,7 +777,8 @@
           "createdAt": { "type": "integer" },
           "lastActiveAt": { "type": "integer" },
           "archived": { "type": "boolean" },
-          "kind": { "enum": ["chat", "scheduled"] }
+          "kind": { "enum": ["chat", "scheduled"] },
+          "botChat": { "type": "boolean", "description": "True on a Bot's canonical \"Bot Chat\": never renamed upstream and not deletable through this API. Absent from servers that predate Bot Mode support." }
         }
       },
       "SessionEnvelope": {

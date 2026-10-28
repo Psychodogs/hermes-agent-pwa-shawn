@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { publishChange } from "./api-changes";
 import { db } from "./db";
-import { hermes, HermesApiError } from "./hermes";
+import { botName, hermesForProject } from "./bots";
+import { HermesApiError } from "./hermes";
 import { createProjectSession, renameProjectSession } from "./project-session";
 import { titleFromPrompt } from "./session-title";
 
@@ -14,6 +15,8 @@ export interface ProjectSessionRow {
   last_active_at: number;
   archived: number;
   kind: "chat" | "scheduled";
+  /** 1 when this is the bound Bot's canonical Bot Chat (see bots.ts) */
+  bot_chat: number;
 }
 
 export function sessionDto(session: ProjectSessionRow) {
@@ -26,6 +29,7 @@ export function sessionDto(session: ProjectSessionRow) {
     lastActiveAt: session.last_active_at,
     archived: session.archived === 1,
     kind: session.kind,
+    botChat: session.bot_chat === 1,
   };
 }
 
@@ -58,12 +62,13 @@ export function registerInitialSession(
   sessionId: string,
   title: string,
   now: number,
+  botChat = false,
 ) {
   db.prepare(
     `INSERT INTO project_sessions
-      (session_id, project_id, title, parent_session_id, created_at, last_active_at, archived)
-     VALUES (?, ?, ?, NULL, ?, ?, 0)`,
-  ).run(sessionId, projectId, title, now, now);
+      (session_id, project_id, title, parent_session_id, created_at, last_active_at, archived, bot_chat)
+     VALUES (?, ?, ?, NULL, ?, ?, 0, ?)`,
+  ).run(sessionId, projectId, title, now, now, botChat ? 1 : 0);
   publishChange("session.changed", { projectId, sessionId });
 }
 
@@ -98,17 +103,18 @@ export async function ensureScheduledSession(
   if (!project) return null;
 
   const sessionId = `${projectId}__scheduled`;
+  const client = hermesForProject(projectId);
   try {
-    await hermes.getSession(sessionId);
+    await client.getSession(sessionId);
   } catch (error) {
     if (!(error instanceof HermesApiError) || error.status !== 404) throw error;
     try {
-      await createProjectSession(sessionId, "Scheduled");
+      await createProjectSession(sessionId, "Scheduled", client);
     } catch (createError) {
       // Two bindings can be saved concurrently. The deterministic upstream id
       // makes that race recoverable: if the other request created it, proceed.
       try {
-        await hermes.getSession(sessionId);
+        await client.getSession(sessionId);
       } catch {
         throw createError;
       }
@@ -138,10 +144,14 @@ export function unreadScheduledCount(projectId: string): number {
   ).count;
 }
 
-export function withProjectNavigation<T extends { id: string }>(project: T) {
+export function withProjectNavigation<T extends { id: string; profile?: string | null }>(
+  project: T,
+) {
   const scheduled = scheduledSessionFor(project.id);
   return {
     ...project,
+    // What the agent is called in a Bot's project; null = the install's name.
+    bot_name: botName(project.profile ?? null),
     scheduled_session_id: scheduled?.session_id ?? null,
     unread_scheduled_count: scheduled ? unreadScheduledCount(project.id) : 0,
   };
@@ -180,7 +190,7 @@ export async function createRootSession(projectId: string, title = "New chat") {
   const project = db.prepare(`SELECT id FROM projects WHERE id = ?`).get(projectId);
   if (!project) return null;
   const sessionId = `${projectId}__s${randomUUID().slice(0, 8)}`;
-  await createProjectSession(sessionId, title);
+  await createProjectSession(sessionId, title, hermesForProject(projectId));
   const now = Date.now();
   db.transaction(() => {
     db.prepare(
@@ -208,7 +218,10 @@ export async function forkProjectSession(
   if (source.kind === "scheduled") return null;
   const sessionId = `${projectId}__f${randomUUID().slice(0, 8)}`;
   const title = requestedTitle?.trim() || `${source.title} branch`;
-  const forked = await hermes.forkSession(sourceSessionId, { id: sessionId, title });
+  const forked = await hermesForProject(projectId).forkSession(sourceSessionId, {
+    id: sessionId,
+    title,
+  });
   const actualId = typeof forked?.id === "string" && forked.id ? forked.id : sessionId;
   const now = Date.now();
   db.transaction(() => {
@@ -242,10 +255,14 @@ export async function renameSession(
   if (session.kind === "scheduled") return null;
   // The local title is the product contract. Older Hermes builds may not have
   // PATCH sessions; a missing mirror must not make a usable local tree fail.
-  try {
-    await renameProjectSession(sessionId, normalized);
-  } catch (error) {
-    if (!(error instanceof HermesApiError) || error.status !== 404) throw error;
+  // A Bot Chat is renamed here only: upstream, its title *is* what makes it
+  // the Bot's canonical chat, and the Desktop shares it.
+  if (session.bot_chat !== 1) {
+    try {
+      await renameProjectSession(sessionId, normalized, hermesForProject(projectId));
+    } catch (error) {
+      if (!(error instanceof HermesApiError) || error.status !== 404) throw error;
+    }
   }
   db.prepare(
     `UPDATE project_sessions SET title = ? WHERE project_id = ? AND session_id = ?`,
@@ -293,14 +310,20 @@ export async function deleteSessionSubtree(projectId: string, sessionId: string)
   if (subtree.some((session) => session.kind === "scheduled")) {
     return { kind: "protected_session" as const };
   }
+  // The Bot's forever-chat belongs to the Bot, not to this project — Desktop,
+  // CLI and other Bots' messages all land in it.
+  if (subtree.some((session) => session.bot_chat === 1)) {
+    return { kind: "protected_bot_chat" as const };
+  }
   const remainingChats = all.filter(
     (session) => session.kind === "chat" && !subtree.some((row) => row.session_id === session.session_id),
   );
   if (remainingChats.length === 0) return { kind: "last_session" as const };
 
+  const client = hermesForProject(projectId);
   for (const session of [...subtree].reverse()) {
     try {
-      await hermes.deleteSession(session.session_id);
+      await client.deleteSession(session.session_id);
     } catch (error) {
       // A retry after a partially successful upstream delete is safe.
       if (!(error instanceof HermesApiError) || error.status !== 404) throw error;

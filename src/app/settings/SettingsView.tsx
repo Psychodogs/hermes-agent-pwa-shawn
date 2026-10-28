@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { usePreferences } from "@/components/PreferencesContext";
 import { useStatus } from "@/hooks/useStatus";
 import { useModels } from "@/hooks/useModels";
+import { useBots } from "@/hooks/useBots";
+import type { Bot } from "@/lib/bots";
 import { usePush, isIos, isStandalone } from "@/hooks/usePush";
 import {
   FIELD_CLASS,
@@ -207,6 +209,7 @@ export function SettingsView({ version }: { version: string }) {
           <NotificationsSection />
           <ScheduledSection />
           <ConnectionSection />
+          <BotsSection />
           <ArchivedSection />
           <DataSection />
 
@@ -572,6 +575,58 @@ function ConnectionSection() {
         }
       />
       <SettingsRow label="Active runs" control={<Meta>{activeRuns}</Meta>} />
+    </SettingsSection>
+  );
+}
+
+/* Hermes Bot Mode's roster, as this gateway serves it.
+ *
+ * Read-only: profiles are created in the Hermes desktop app or with
+ * `hermes profile create`, and there is no endpoint to do it over the API.
+ * What this can do is say why a Bot isn't offered in New project — almost
+ * always a missing per-profile key, which the gateway requires and Bot Mode
+ * does not write for you. */
+function BotsSection() {
+  const roster = useBots();
+  if (!roster || roster.bots.length === 0) return null;
+
+  const hintFor = (bot: Bot): string => {
+    const where = bot.id === "default" ? "~/.hermes/.env" : `~/.hermes/profiles/${bot.id}/.env`;
+    switch (bot.status) {
+      case "ready":
+        return bot.botChatProjectId
+          ? "Its Bot Chat is a project here."
+          : bot.description ?? "Ready — pick it in New project.";
+      case "no_key":
+        return `Add API_SERVER_KEY to ${where} (openssl rand -hex 32). The gateway rejects the default key for another profile.`;
+      case "key_unreadable":
+        return `This app's user can't read ${where} — Hermes creates it 0600. Grant read access, or set HERMES_PROFILE_${bot.id.toUpperCase().replace(/-/g, "_")}_KEY in this app's environment.`;
+      case "bad_key":
+        return `The gateway rejected the API_SERVER_KEY in ${where}.`;
+      case "not_served":
+        return "The gateway answers 404 for this profile — it is parked, standalone, or this Hermes predates profile routing.";
+      case "unreachable":
+        return "Hermes did not answer.";
+    }
+  };
+
+  return (
+    <SettingsSection
+      title="Bots"
+      description={
+        roster.managed
+          ? "Hermes profiles on this gateway. A project bound to one runs as that Bot; its Bot Chat can message the others."
+          : "Hermes profiles on this gateway. A project bound to one runs as that Bot. Turn on Bot Mode in the Hermes desktop app to let them message each other."
+      }
+    >
+      {roster.bots.map((bot) => (
+        <SettingsRow
+          key={bot.id}
+          label={bot.name}
+          hint={hintFor(bot)}
+          control={<Meta>{bot.status === "ready" ? `@${bot.handle}` : bot.status.replace("_", " ")}</Meta>}
+        />
+      ))}
     </SettingsSection>
   );
 }

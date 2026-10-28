@@ -245,6 +245,16 @@ function migrate(db: Database.Database) {
   // JSON of Hermes model_options: {reasoning:{enabled,effort}, fast}
   addColumn(db, "projects", "model_options", "TEXT");
   addColumn(db, "projects", "last_chat_session_id", "TEXT");
+  // The Hermes profile (Bot) this project runs as. NULL = the default
+  // profile, which is every project created before Bot Mode support. Fixed at
+  // creation: the project's sessions live in that profile's own session DB,
+  // so rebinding would orphan every one of them.
+  addColumn(db, "projects", "profile", "TEXT");
+  // 1 on the row that is a Bot's canonical "Bot Chat". Hermes keys the Bot
+  // Mode prompt and the message_agent tool on that exact title, and Bot Mode
+  // clients share the session — so it is never renamed upstream, never
+  // deleted from here, and kind stays 'chat' for every client that reads it.
+  addColumn(db, "project_sessions", "bot_chat", "INTEGER NOT NULL DEFAULT 0");
   addColumn(db, "project_sessions", "kind", "TEXT NOT NULL DEFAULT 'chat'");
   addColumn(db, "queued_messages", "session_id", "TEXT");
   db.exec(`CREATE INDEX IF NOT EXISTS idx_queued_session

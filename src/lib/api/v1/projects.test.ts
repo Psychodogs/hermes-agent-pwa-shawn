@@ -35,4 +35,29 @@ describe("projectDto", () => {
       options: { reasoning: { enabled: true, effort: "medium" } },
     });
   });
+
+  it("names the Bot a project runs as, and null for the default profile", () => {
+    const base = {
+      id: "p",
+      name: "Project",
+      emoji: null,
+      color: null,
+      cwd: null,
+      instructions: null,
+      pinned: 0,
+      skills: null,
+      model: null,
+      provider: null,
+      model_options: null,
+      session_id: "s",
+      created_at: 1,
+      last_active_at: 2,
+      archived: 0,
+    };
+    expect(projectDto(base).bot).toBeNull();
+    expect(projectDto({ ...base, profile: "scribe", bot_name: "Dr. Scribe" }).bot).toEqual({
+      id: "scribe",
+      name: "Dr. Scribe",
+    });
+  });
 });

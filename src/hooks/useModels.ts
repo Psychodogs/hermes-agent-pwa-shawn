@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { ModelsPayload } from "@/app/api/models/route";
+import { botQuery } from "@/components/ProjectBotContext";
 
 /* Hermes' model inventory, plus the model the gateway actually runs.
  *
@@ -14,13 +15,13 @@ import type { ModelsPayload } from "@/app/api/models/route";
  * open. On a cold cache it can take a while (Hermes enriches with provider
  * catalogues and pricing), which is why every consumer has to tolerate null.
  */
-export function useModels() {
+export function useModels(bot: string | null = null) {
   const [payload, setPayload] = useState<ModelsPayload | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/models")
+    fetch(`/api/models${botQuery(bot)}`)
       .then((r) => r.json())
       .then((body: ModelsPayload) => {
         if (!cancelled) setPayload(body);
@@ -33,19 +34,19 @@ export function useModels() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [bot]);
 
   const refresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      const res = await fetch("/api/models?refresh=1");
+      const res = await fetch(`/api/models?refresh=1${botQuery(bot, "&")}`);
       setPayload((await res.json()) as ModelsPayload);
     } catch {
       /* keep whatever is on screen — a stale list beats an empty one */
     } finally {
       setRefreshing(false);
     }
-  }, []);
+  }, [bot]);
 
   return { payload, refreshing, refresh };
 }

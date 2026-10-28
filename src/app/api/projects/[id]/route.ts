@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
-import { hermes, HermesApiError } from "@/lib/hermes";
+import { hermesForProject } from "@/lib/bots";
+import { HermesApiError } from "@/lib/hermes";
 import { publishChange } from "@/lib/api-changes";
 import { listProjectSessions, withProjectNavigation } from "@/lib/project-sessions";
 
@@ -14,7 +15,7 @@ export async function GET(_req: Request, ctx: RouteContext<"/api/projects/[id]">
   // what is about to be destroyed. A failure here must not 500 the route.
   let messageCount: number | null = null;
   try {
-    const session = await hermes.getSession(project.session_id);
+    const session = await hermesForProject(id).getSession(project.session_id);
     const raw = session.message_count;
     if (typeof raw === "number") messageCount = raw;
   } catch {
@@ -132,10 +133,13 @@ export async function DELETE(req: Request, ctx: RouteContext<"/api/projects/[id]
 
   let sessionDeleted = false;
   if (dropSession) {
-    const sessions = listProjectSessions(id, true);
+    const client = hermesForProject(id);
+    // A Bot Chat outlives the project: it is the Bot's, and the Desktop, the
+    // CLI and other Bots all still write to it.
+    const sessions = listProjectSessions(id, true).filter((s) => s.bot_chat !== 1);
     for (const session of [...sessions].reverse()) {
       try {
-        await hermes.deleteSession(session.session_id);
+        await client.deleteSession(session.session_id);
       } catch (error) {
         if (error instanceof HermesApiError && error.status === 404) continue;
         // Leave the local rows alone if every transcript could not be removed.

@@ -69,7 +69,7 @@ function ProjectSettingsForm({
   const [cwd, setCwd] = useState(project.cwd ?? "");
   const [pinned, setPinned] = useState(project.pinned === 1);
   const [skills, setSkills] = useState<string[]>(() => parseSkills(project.skills));
-  const catalogue = useSkillCatalogue();
+  const catalogue = useSkillCatalogue(project.profile ?? null);
   const { features } = useStatus();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
@@ -248,6 +248,24 @@ function ProjectSettingsForm({
         </div>
       </div>
 
+      {/* Read-only on purpose: the project's sessions live in this profile's
+          own session DB, so moving it to another Bot would orphan them. */}
+      {project.profile && (
+        <div>
+          <span className={LABEL_CLASS}>Bot</span>
+          <p className="mt-1.5 text-ui text-ink">
+            {project.bot_name ?? project.profile}
+            <span className="ml-1.5 font-mono text-label text-ink-3">
+              @{project.profile === "default" ? "hermes" : project.profile}
+            </span>
+          </p>
+          <p className={`mt-0.5 ${HELP_CLASS}`}>
+            This project runs as that Bot, with its own memory, skills and model.
+            A new project is the way to talk to a different one.
+          </p>
+        </div>
+      )}
+
       <div>
         <label htmlFor="project-instructions" className={LABEL_CLASS}>
           Standing instructions
@@ -395,6 +413,7 @@ function ProjectSettingsForm({
                   : ""}
                 . Leave unchecked to keep the transcript reachable from the CLI
                 and other Hermes clients.
+                {project.profile && " A Bot Chat is always kept — it belongs to the Bot."}
               </span>
             </label>
             <div className="mt-3 flex items-center justify-end gap-2">

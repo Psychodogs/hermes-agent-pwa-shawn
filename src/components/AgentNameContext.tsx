@@ -61,6 +61,26 @@ export function AgentNameProvider({
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }
 
+/**
+ * A Bot's project speaks with the Bot's name, not the install's. Only the
+ * read side is overridden — renaming the agent still means the install-wide
+ * name, which is what Settings → Agent edits.
+ */
+export function AgentNameOverride({
+  name,
+  children,
+}: {
+  name: string | null | undefined;
+  children: ReactNode;
+}) {
+  const parent = useContext(Context);
+  const value = useMemo(
+    () => (name ? { ...parent, agentName: name } : parent),
+    [name, parent],
+  );
+  return <Context.Provider value={value}>{children}</Context.Provider>;
+}
+
 export function useAgentName() {
   return useContext(Context).agentName;
 }

@@ -48,9 +48,12 @@ pnpm build          # next build
 pnpm start          # production server
 pnpm lint           # eslint — CI-equivalent is: npx eslint src --max-warnings=0
 pnpm typecheck      # next typegen && tsc --noEmit (bare tsc lacks the route types)
+pnpm test           # vitest — unit tests beside their modules in src/lib
+pnpm openapi:check  # every /api/v1 route is in docs/api/v1/openapi.json
 ```
 
-There is no test suite. Verification is done by running the app against a live
+The vitest suite covers the pure parts (migrations, DTOs, parsing, profile
+routing). The streaming path is verified by running the app against a live
 Hermes instance — see "Verifying against a real Hermes" below.
 
 Search is `/api/search`, over our own SQLite only: project names, project
@@ -93,7 +96,9 @@ Never make the browser talk to `:8642` directly.
 | `src/lib/app-settings.ts` | Install-wide settings in SQLite — currently just the agent's name. |
 | `src/components/AgentNameContext.tsx` | The agent's name on the client, seeded from the root layout. |
 | `src/components/LaunchNormalizer.tsx` | Sends a cold launch of the installed app to `/` — iOS pins the icon to whatever URL you installed from. Mounted in the root layout, so `/settings` is covered too. |
-| `src/lib/hermes.ts` | Typed client for `:8642`. The only place `HERMES_API_KEY` is read. |
+| `src/lib/hermes.ts` | Typed client for `:8642`. The only place `HERMES_API_KEY` — and any profile's key — is read. `hermes` is the default profile; `hermesFor(profile)` is the `/p/<profile>/` mirror. |
+| `src/lib/bots.ts` | Bot Mode: the profile roster (read off disk, probed over HTTP), Bot Chat resolution, and `hermesForProject()`. |
+| `src/components/ProjectBotContext.tsx` | The open project's Bot on the client: scopes the skill/model/toolset catalogues and the agent's name. |
 | `src/lib/run-manager.ts` | Owns runs, the upstream SSE connection, the event log, the queue, and the push-on-completion hook. Singleton pinned to `globalThis` (HMR would otherwise open a second upstream connection per run). |
 | `src/lib/api/v1/**` | Stable native-client boundary: device auth, public DTOs and idempotent writes. |
 | `src/app/api/v1/**` | Versioned, bearer-authenticated routes for native clients. Pairing claim is the only public exception. |
@@ -458,6 +463,54 @@ say the opposite.
 - **`/api/ws` and `/api/pty` are dashboard-only** (port 9119). Over `:8642`,
   SSE is the only push transport.
 
+- **Bot Mode Bots are profiles, served at `/p/<profile>/`.** Checked against
+  upstream `main` (Oct 2026), not a running instance. Bot Mode is Desktop UI over
+  Hermes profiles; what reaches `:8642` is the multiplexer
+  (`gateway.multiplex_profiles`, now always on), which mirrors every route
+  under `/p/<profile>/` with that profile's config, memory, skills and session
+  DB (`api_server_profile_prefix.py`). What bites:
+
+  - **The key is per profile.** A prefixed request must carry the API_SERVER_KEY
+    from `~/.hermes/profiles/<id>/.env`. The default key is rejected, and a
+    profile without its own key fails closed with 401. Bot Mode does not write
+    one. `hermes.ts` reads it from that file (same host), or from
+    `HERMES_PROFILE_<ID>_KEY`.
+  - **Nothing lists profiles over HTTP.** The roster is
+    `HERMES_HOME/profiles/*` plus `profile.yaml` (`ui_meta['hermes-bots'].title`
+    is the Bot's name). Every entry is probed: `GET /p/<id>/health` is
+    unauthenticated and 404s for a prefix the gateway does not serve (parked,
+    standalone, old Hermes); `/p/<id>/v1/capabilities` then tests the key.
+    No capability flag covers this, so the real request is the probe.
+  - **The Bot Chat is the session titled exactly `Bot Chat`.**
+    `tools/bot_mode_probe.py` gates the roster prompt section and
+    `message_agent` on that title, and only when some profile is managed (has
+    `ui_meta['hermes-bots']`). Find it with
+    `GET /api/sessions?title=Bot%20Chat&include_hidden=1`, which is what
+    `hermes peer dm` does; `include_hidden` is honoured only with a title.
+    Never suffix that title the way `createProjectSession` does for
+    collisions, because "Bot Chat (2)" is an ordinary session.
+  - Explicit session ids pass through a prefix unchanged. Only ids that
+    Hermes derives itself are namespaced by profile.
+  - **A Bot Chat may have another writer.** If the Desktop holds that Bot Chat
+    live, or the gateway runs under session authority, `POST /v1/runs` into it
+    is admitted to the owner's mailbox (`_admit_to_live_bot_chat`,
+    `api_server_runs.py`). That run streams no deltas or tool events, only a
+    terminal `run.completed` carrying `output`. `/stop` cancels our run while
+    the owner's turn carries on. The thread still refreshes on the terminal
+    event, and `runText()` falls back to `output` for the notification. Turns
+    the Desktop or CLI run in the same chat show up only on reload.
+
+  So a project carries `projects.profile`, which is fixed at creation because
+  its sessions live in that profile's DB, and every Hermes call for it goes
+  through `hermesForProject()` / `runManager.clientFor()`. A run id is resolved
+  through its run row to the same profile. The Bot Chat row is flagged
+  `project_sessions.bot_chat` rather than given a new `kind`, because native
+  clients switch on `kind`. It is renamed locally only, never deleted from
+  here (Desktop, CLI and other Bots all write to it), and one project per Bot
+  Chat. Out of scope: cron jobs of a non-default profile (the watcher reads
+  the default profile's `/api/jobs` only), `bot_peers` on other machines, and
+  rooms/group chat (Desktop JSON-RPC over `/api/ws`, not `:8642`).
+
 Hermes versions differ. When something behaves unexpectedly, read the running
 instance's `gateway/platforms/api_server.py` rather than the docs.
 
@@ -468,6 +521,8 @@ HERMES_API_URL=http://127.0.0.1:8642
 HERMES_API_KEY=<same value as Hermes' API_SERVER_KEY>
 DB_PATH=~/.hermes-pwa/state.db
 HERMES_CRON_DIR=~/.hermes/cron            # where the gateway writes job output
+HERMES_HOME=~/.hermes                      # Bot Mode profiles: <home>/profiles/<id>/{profile.yaml,.env}
+HERMES_PROFILE_<ID>_KEY=                   # optional; overrides a profile's .env API_SERVER_KEY
 VAPID_PUBLIC_KEY= / VAPID_PRIVATE_KEY=     # npx web-push generate-vapid-keys
 VAPID_SUBJECT=                             # must be a routable mailto:/https: — Apple checks
 ```

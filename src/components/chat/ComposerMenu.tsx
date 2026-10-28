@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef } from "react";
 import { useSkillCatalogue } from "@/components/nav/SkillPicker";
+import { useProjectBot } from "@/components/ProjectBotContext";
 import {
   COMMAND_CATALOGUE,
   REASON_LABEL,
@@ -48,7 +49,7 @@ export function useMenuItems(
   features: HermesFeatures,
   running: boolean,
 ): { items: MenuItem[]; commands: SlashCommand[] } {
-  const skills = useSkillCatalogue();
+  const skills = useSkillCatalogue(useProjectBot());
 
   return useMemo(() => {
     if (!mode) return { items: [], commands: [] };

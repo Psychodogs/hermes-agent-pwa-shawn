@@ -156,15 +156,19 @@ function SessionBranch({
                     setMode("rename");
                   }}
                 />
-                <MenuItem
-                  icon={<IconTrash size={14} />}
-                  label="Delete"
-                  tone="danger"
-                  onSelect={() => {
-                    close();
-                    setMode("delete");
-                  }}
-                />
+                {/* A Bot Chat belongs to its Bot — the desktop app, the CLI
+                    and other Bots all write to it — so the server refuses. */}
+                {session.bot_chat !== 1 && (
+                  <MenuItem
+                    icon={<IconTrash size={14} />}
+                    label="Delete"
+                    tone="danger"
+                    onSelect={() => {
+                      close();
+                      setMode("delete");
+                    }}
+                  />
+                )}
               </>
             )}
           </Menu>

@@ -1,4 +1,4 @@
-import { hermes } from "@/lib/hermes";
+import { hermesForProject } from "@/lib/bots";
 import { runManager } from "@/lib/run-manager";
 
 export async function POST(_req: Request, ctx: RouteContext<"/api/projects/[id]/retry">) {
@@ -9,7 +9,7 @@ export async function POST(_req: Request, ctx: RouteContext<"/api/projects/[id]/
     return Response.json({ error: "a run is already active" }, { status: 409 });
   }
 
-  const res = await hermes.getMessages(project.session_id);
+  const res = await hermesForProject(id).getMessages(project.session_id);
   const lastUserMessage = [...res.data]
     .reverse()
     .find((m) => m.role === "user" && typeof m.content === "string" && m.content.length > 0);
