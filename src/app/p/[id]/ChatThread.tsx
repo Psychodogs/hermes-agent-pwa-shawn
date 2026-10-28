@@ -45,7 +45,6 @@ import { ProjectBotProvider } from "@/components/ProjectBotContext";
 import { IconChevronDown } from "@/components/primitives/icons";
 import type { SlashCommand } from "@/lib/commands";
 import type {
-  Attachment,
   Project,
   ProjectSession,
   ThreadMessage,
@@ -78,7 +77,10 @@ export function ChatThread(props: ChatThreadProps) {
 
 function ChatThreadBody({ project, session, initialMessages }: ChatThreadProps) {
   const projectId = project.id;
-  const scheduled = session.kind === "scheduled";
+  /* General is where scheduled jobs report. It is an ordinary chat — reply
+   * in place — with two differences: it marks its reports read while you are
+   * looking at it, and it never grows a second chat. */
+  const general = project.scheduled_session_id === session.session_id;
   const thread = useThread(projectId, session.session_id, initialMessages);
   const {
     messages,
@@ -111,7 +113,6 @@ function ChatThreadBody({ project, session, initialMessages }: ChatThreadProps) 
   const [modelOpen, setModelOpen] = useState(false);
   const [toolsetsOpen, setToolsetsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [scheduledSending, setScheduledSending] = useState(false);
   /** text pushed into the composer — "edit and resend", or a starter prompt */
   const [seed, setSeed] = useState<{ text: string; nonce: number }>();
   const seedComposer = useCallback(
@@ -201,7 +202,7 @@ function ChatThreadBody({ project, session, initialMessages }: ChatThreadProps) 
   const stopping = phase === "stopping";
 
   useShortcuts([
-    { key: ".", mod: true, when: running && !stopping && !scheduled, run: () => void stop() },
+    { key: ".", mod: true, when: running && !stopping, run: () => void stop() },
   ]);
 
   // Oldest first, for the composer's ↑ recall.
@@ -227,7 +228,7 @@ function ChatThreadBody({ project, session, initialMessages }: ChatThreadProps) 
   const latestScheduled = messages.findLast((message) => message.role === "cron");
 
   const markScheduledRead = useCallback(async () => {
-    if (!scheduled || document.visibilityState !== "visible") return;
+    if (!general || document.visibilityState !== "visible") return;
     const deliveryId = latestScheduled?.id ?? null;
     if (readThroughRef.current === deliveryId) return;
     const response = await fetch(`/api/projects/${projectId}/scheduled/read`, {
@@ -236,47 +237,15 @@ function ChatThreadBody({ project, session, initialMessages }: ChatThreadProps) 
     if (!response.ok) return;
     readThroughRef.current = deliveryId;
     router.refresh();
-  }, [latestScheduled?.id, projectId, router, scheduled]);
+  }, [general, latestScheduled?.id, projectId, router]);
 
   useEffect(() => {
-    if (!scheduled) return;
+    if (!general) return;
     void markScheduledRead();
     const onVisibility = () => void markScheduledRead();
     document.addEventListener("visibilitychange", onVisibility);
     return () => document.removeEventListener("visibilitychange", onVisibility);
-  }, [markScheduledRead, scheduled]);
-
-  const replyToScheduled = useCallback(
-    async (text: string, attachments: Attachment[]) => {
-      if (!latestScheduled || scheduledSending) return;
-      setScheduledSending(true);
-      try {
-        const response = await fetch(`/api/projects/${projectId}/scheduled/reply`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            deliveryId: latestScheduled.id,
-            text,
-            attachments,
-          }),
-        });
-        const body = (await response.json().catch(() => ({}))) as {
-          error?: string;
-          session?: { id: string };
-        };
-        if (body.session?.id) {
-          router.push(`/p/${projectId}/s/${body.session.id}`);
-          return;
-        }
-        raiseError(body.error ?? "Could not start the discussion");
-      } catch {
-        raiseError("Network unreachable");
-      } finally {
-        setScheduledSending(false);
-      }
-    },
-    [latestScheduled, projectId, raiseError, router, scheduledSending],
-  );
+  }, [general, markScheduledRead]);
 
   /* The chip drives model_options.reasoning on the run, so it is scoped to
    * whatever will actually run — the pinned model, else the gateway's own.
@@ -456,9 +425,7 @@ function ChatThreadBody({ project, session, initialMessages }: ChatThreadProps) 
               // Hermes has no edit endpoint, so this starts a new prompt from
               // the old one rather than rewriting history.
               onEdit={
-                !scheduled && index === lastUserIndex
-                  ? () => seedComposer(message.content)
-                  : undefined
+                index === lastUserIndex ? () => seedComposer(message.content) : undefined
               }
             />
           }
@@ -541,11 +508,11 @@ function ChatThreadBody({ project, session, initialMessages }: ChatThreadProps) 
               style={{ animation: "fade-up var(--duration-slow) var(--ease-out-strong) both" }}
             >
               <p className="max-w-xs text-ui text-balance text-ink-2">
-                {scheduled
-                  ? "Scheduled reports for this project will appear here."
+                {general
+                  ? "Scheduled jobs report here. Reply to any of them right in this chat."
                   : "Nothing here yet. This thread stays put — come back to it whenever."}
               </p>
-              {!scheduled && (
+              {!general && (
                 <div className="flex w-full max-w-sm flex-col gap-2">
                   {starters.map((starter) => (
                     <button
@@ -672,39 +639,24 @@ function ChatThreadBody({ project, session, initialMessages }: ChatThreadProps) 
 
       <Composer
         projectId={projectId}
-        draftId={scheduled ? undefined : session.session_id}
-        history={scheduled ? undefined : promptHistory}
+        draftId={session.session_id}
+        history={promptHistory}
         seed={seed}
-        onSend={scheduled ? replyToScheduled : thread.send}
+        onSend={thread.send}
         onStop={stop}
         onCommand={(command, rest) => void onCommand(command, rest)}
         onUnavailable={raiseError}
-        running={scheduled ? false : running}
+        running={running}
         stopping={stopping}
         features={features}
         /* "default" while the inventory is still in flight, rather than no
          * chip at all — otherwise the only way into the picker appears late,
          * or never if Hermes is unreachable. */
-        modelLabel={
-          scheduled ? null : effectiveModel ?? (features.model_options ? "default" : null)
-        }
-        onPickModel={
-          !scheduled && features.model_options ? () => setModelOpen(true) : undefined
-        }
-        thinkingEffort={
-          !scheduled && supportsReasoning ? effortOf(selection.modelOptions) : undefined
-        }
-        onThinkingChange={scheduled ? undefined : setThinking}
+        modelLabel={effectiveModel ?? (features.model_options ? "default" : null)}
+        onPickModel={features.model_options ? () => setModelOpen(true) : undefined}
+        thinkingEffort={supportsReasoning ? effortOf(selection.modelOptions) : undefined}
+        onThinkingChange={setThinking}
         errorNonce={errorSeq}
-        disabled={scheduled && (!latestScheduled || scheduledSending)}
-        placeholder={
-          scheduled
-            ? latestScheduled
-              ? "Reply to latest report"
-              : "Waiting for the first scheduled report…"
-            : undefined
-        }
-        commandsEnabled={!scheduled}
       />
 
       <ModelPicker
@@ -717,14 +669,12 @@ function ChatThreadBody({ project, session, initialMessages }: ChatThreadProps) 
         onRefresh={() => void refresh()}
       />
       <ToolsetsSheet open={toolsetsOpen} onClose={() => setToolsetsOpen(false)} />
-      {!scheduled && (
-        <ProjectSettingsSheet
-          project={project}
-          sessionId={session.session_id}
-          open={settingsOpen}
-          onClose={() => setSettingsOpen(false)}
-        />
-      )}
+      <ProjectSettingsSheet
+        project={project}
+        sessionId={session.session_id}
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+      />
     </>
   );
 }

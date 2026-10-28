@@ -9,7 +9,10 @@ import {
   type ConversationHistoryEntry,
   type HermesClient,
   type HermesContentPart,
+  type HermesMessage,
 } from "./hermes";
+import type { CronDelivery } from "./cron-watcher";
+import { mergeProjectMessages } from "./message-normalization";
 import { composeInstructions, parseSkills } from "./instructions";
 import { outboxDirFor } from "./uploads";
 import { RECOMMEND_FENCE, type Attachment } from "./chat-types";
@@ -28,6 +31,12 @@ const TERMINAL_STATUSES = new Set(["completed", "failed", "cancelled"]);
  * open behind a lock screen — "attached" and "being read" are not the same
  * thing, and 60s is roughly where a task stops being interactive. */
 const NOTIFY_AFTER_MS = 60_000;
+
+/* How many scheduled reports a reply in General carries as context. They are
+ * resent on every turn and live outside Hermes' transcript, so compaction can
+ * never shrink them — a chat that runs for months would otherwise resend
+ * every report it ever received. */
+const REPORT_CONTEXT_LIMIT = 20;
 
 /* An approval blocks the run until a human answers, and "a browser is
  * attached" is not the same as "a human is reading" — a locked phone still
@@ -90,6 +99,59 @@ export function scheduledReportHistoryEntry(
     role: "assistant",
     content: `[${label} from "${report.job_name}" at ${new Date(report.ts).toISOString()}]\n${report.body}`,
   };
+}
+
+/**
+ * The transcript a run is given, with scheduled reports woven in where they
+ * arrived.
+ *
+ * This is the app's counterpart to Hermes' `mirror_to_session`: a cron
+ * delivery into a chat is also written into that chat's transcript, so a
+ * reply has something to refer to. There is no HTTP endpoint that appends to
+ * a transcript, but caller-supplied `conversation_history` is authoritative
+ * for the turn, so the report goes in there instead. Same merge the history
+ * route uses, so the agent sees the order the reader sees.
+ */
+export function conversationHistoryFrom(
+  messages: HermesMessage[],
+  reports: CronDelivery[],
+): ConversationHistoryEntry[] {
+  const entries = mergeProjectMessages(messages, reports).flatMap(
+    (m): ConversationHistoryEntry[] => {
+      const cron = m.cron as { jobName: string; status: string; ts: number } | undefined;
+      if (m.role === "cron" && cron) {
+        return [
+          scheduledReportHistoryEntry({
+            job_name: cron.jobName,
+            status: cron.status,
+            body: m.content ?? "",
+            ts: cron.ts,
+          }),
+        ];
+      }
+      if (
+        (m.role === "user" || m.role === "assistant") &&
+        typeof m.content === "string" &&
+        m.content.length > 0
+      ) {
+        return [{ role: m.role, content: m.content }];
+      }
+      return [];
+    },
+  );
+  /* A report lands after a reply, or two land between turns, which puts two
+   * assistant entries side by side. Upstream main merges those itself, but
+   * 0.20.5 doesn't promise to and some providers reject broken alternation,
+   * so they are joined here. */
+  return entries.reduce<ConversationHistoryEntry[]>((out, entry) => {
+    const previous = out[out.length - 1];
+    if (previous?.role === entry.role) {
+      out[out.length - 1] = { role: entry.role, content: `${previous.content}\n\n${entry.content}` };
+    } else {
+      out.push(entry);
+    }
+    return out;
+  }, []);
 }
 
 /**
@@ -360,31 +422,23 @@ class RunManager extends EventEmitter {
     client: HermesClient,
     sessionId: string,
   ): Promise<ConversationHistoryEntry[]> {
-    const scheduled = db
-      .prepare(
-        `SELECT d.job_name, d.status, d.body, d.ts
-           FROM cron_discussions c
-           JOIN cron_deliveries d ON d.id = c.delivery_id
-          WHERE c.session_id = ?`,
-      )
-      .get(sessionId) as ScheduledReportContext | undefined;
-    let history: ConversationHistoryEntry[] = [];
-    try {
-      const res = await client.getMessages(sessionId);
-      history = res.data
-        .filter(
-          (m) =>
-            (m.role === "user" || m.role === "assistant") &&
-            typeof m.content === "string" &&
-            m.content.length > 0,
+    // Only General's chat has reports, so this is empty everywhere else.
+    const reports = (
+      db
+        .prepare(
+          `SELECT * FROM cron_deliveries WHERE session_id = ?
+            ORDER BY ts DESC LIMIT ?`,
         )
-        .map((m) => ({ role: m.role, content: m.content as string }));
+        .all(sessionId, REPORT_CONTEXT_LIMIT) as CronDelivery[]
+    ).reverse();
+    let messages: HermesMessage[] = [];
+    try {
+      messages = (await client.getMessages(sessionId)).data;
     } catch {
-      // Brand-new session, or session DB hiccup — its linked report remains
-      // available even when there is no Hermes transcript to append.
+      // Brand-new session, or session DB hiccup — the reports are still ours
+      // to send even when there is no Hermes transcript to weave them into.
     }
-    if (!scheduled) return history;
-    return [scheduledReportHistoryEntry(scheduled), ...history];
+    return conversationHistoryFrom(messages, reports);
   }
 
   async startRun(

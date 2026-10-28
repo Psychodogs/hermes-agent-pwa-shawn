@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { isGeneralProject } from "@/lib/general-chat";
 import { hermesForProject } from "@/lib/bots";
 import { HermesApiError } from "@/lib/hermes";
 import { publishChange } from "@/lib/api-changes";
@@ -129,6 +130,24 @@ export async function DELETE(req: Request, ctx: RouteContext<"/api/projects/[id]
     db.prepare(`UPDATE projects SET archived = 1 WHERE id = ?`).run(id);
     publishChange("project.changed", { projectId: id });
     return Response.json({ ok: true, archived: true });
+  }
+
+  /* Every bound job reports into General, and bindings cascade with their
+   * project — purging it would silently unbind all of them, and they were
+   * forced to `deliver: "local"`, so they would then report nowhere. */
+  if (isGeneralProject(id)) {
+    const bound = db.prepare(`SELECT COUNT(*) AS count FROM cron_bindings`).get() as {
+      count: number;
+    };
+    if (bound.count > 0) {
+      return Response.json(
+        {
+          error: `${bound.count} scheduled job${bound.count === 1 ? " reports" : "s report"} here. Point ${bound.count === 1 ? "it" : "them"} elsewhere in Settings → Scheduled first.`,
+          code: "general_has_bindings",
+        },
+        { status: 409 },
+      );
+    }
   }
 
   let sessionDeleted = false;

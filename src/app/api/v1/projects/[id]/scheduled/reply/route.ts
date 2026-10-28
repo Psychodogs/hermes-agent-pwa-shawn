@@ -1,17 +1,15 @@
-import { POST as replyScheduled } from "@/app/api/projects/[id]/scheduled/reply/route";
-import { fromLegacy, withDevice } from "@/lib/api/v1/http";
-import { idempotentJson } from "@/lib/api/v1/idempotency";
+import { error, withDevice } from "@/lib/api/v1/http";
 
-type Context = { params: Promise<{ id: string }> };
-
-export async function POST(request: Request, ctx: Context) {
-  return withDevice(request, async (device) => {
-    const { id } = await ctx.params;
-    return idempotentJson(
-      request,
-      device.id,
-      `POST:/api/v1/projects/${id}/scheduled/reply`,
-      async () => fromLegacy(await replyScheduled(request, ctx)),
-    );
-  });
+/* Retired. Replying to a report used to spawn a new root discussion; reports
+ * now arrive in the General chat, and a reply is an ordinary message there
+ * (POST …/sessions/{scheduledSessionId}/messages). Kept so an old client gets
+ * a reason instead of a 404. */
+export async function POST(request: Request) {
+  return withDevice(request, async () =>
+    error(
+      410,
+      "scheduled_reply_removed",
+      "Scheduled reports arrive in the General chat now. Reply there as an ordinary message.",
+    ),
+  );
 }

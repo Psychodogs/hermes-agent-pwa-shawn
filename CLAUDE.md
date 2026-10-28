@@ -110,7 +110,9 @@ Never make the browser talk to `:8642` directly.
 | `src/lib/push.ts` | Web Push / VAPID. The only place the private key is read. |
 | `src/lib/uploads.ts` | Where attachments land, and the download allowlist. |
 | `src/lib/commands.ts` | The composer's `/` catalogue and its client-side dispatch. |
-| `src/lib/cron-watcher.ts` | Watches Hermes' cron jobs and delivers their output into a project. Singleton, started from `src/instrumentation.ts`. |
+| `src/lib/cron-watcher.ts` | Watches Hermes' cron jobs and delivers their output into the General chat. Singleton, started from `src/instrumentation.ts`. |
+| `src/lib/general-chat.ts` | Lookups for General, the one-chat project every bound job reports into. Database only, so anything can import it. |
+| `src/lib/general-chat-setup.ts` | Creates General on first need (single-flight), and the one-time migration that retired the per-project Scheduled inboxes. |
 | `src/lib/notification-kinds.ts` | The push vocabulary, importable from the client — `push.ts` is not, it pulls in web-push and SQLite. |
 | `src/app/api/**` | Route handlers. The browser only ever calls these. |
 | `src/app/settings/**` | The app-wide settings page. |
@@ -288,8 +290,8 @@ write `projects.session_id` or emit a navigation event: doing that made a tap
 on Android replace the route in every open browser. The legacy `/select`
 routes remain for compatibility, but native row taps do not call them or
 refresh the shared tree. Explicit session IDs are required for session-specific
-actions. Opening a project without one resolves unread
-Scheduled first and otherwise the most recently active ordinary chat; stored
+actions. Opening a project without one resolves its most recently active
+ordinary chat; stored
 project session pointers are legacy compatibility fields, not navigation
 authority.
 
@@ -400,8 +402,40 @@ say the opposite.
   Telegram message and a push notification seconds apart, and a per-job
   always/on-failure/never switch existed to mute one of them. The switch was
   the tell — the redundancy was never worth the control it needed. Binding a
-  project now forces `deliver: "local"`, and the route decides that rather than
+  job now forces `deliver: "local"`, and the route decides that rather than
   the form, so the rule holds for any caller.
+
+  **Every bound job reports into one General chat**, as a plain message — no
+  model turn. This copies how Hermes itself delivers. Checked against upstream
+  `main` (`cron/scheduler_delivery.py`), not a running 0.20.5: output lands in
+  one ongoing conversation (a Telegram home channel, or a profile's Bot Chat
+  via `deliver: bot-chat`), and with `attach_to_session` / `cron.mirror_delivery`
+  it is also written into that chat's transcript so a reply has context.
+  Neither lane reaches this app: api_server origins count as origin-less, and
+  `bot-chat` needs a live Desktop/TUI owner. So the watcher keeps reading the
+  output file, and only the last step copies Hermes. General is an ordinary
+  project with exactly one session, named by the `general_project_id`
+  app_settings row. It is created lazily, adopting an existing project called
+  "General" first. New chat, `/new` and branch answer 409
+  `general_single_chat`, and purging it while jobs are bound answers 409,
+  because bindings cascade with their project. Archiving it is allowed, but the
+  next delivery unarchives it, chat included: a report nobody can see has not
+  been delivered.
+
+  The mirror is `buildConversationHistory()`. No endpoint appends to a
+  transcript, but caller-supplied `conversation_history` is authoritative for
+  the turn (`api_server_runs.py`), so the newest 20 reports are woven in by
+  timestamp on every run in that chat. The cap exists because they live
+  outside Hermes' transcript and compaction can never shrink them.
+
+  This replaced a protected, read-only Scheduled inbox per project, where
+  replying spawned a new root chat per report (`cron_discussions`). That was
+  two conversation models and a sidebar full of one-message threads.
+  `migrateScheduledToGeneral()` re-homed every report into General, deleted
+  the inboxes and reply threads here and in Hermes, and runs once (app_settings
+  `scheduled_general_migrated`). v1 keeps the shape: `scheduledSessionId` /
+  `unreadScheduledCount` now describe General, `kind` is always `chat`, and
+  `scheduled/reply` answers 410.
 
   Three details that bite:
 
@@ -577,12 +611,12 @@ with no lost tokens. Also worth checking after streaming changes: stop settles
 as `cancelled` with partial output retained; two messages sent during an active
 run queue and the second auto-starts on completion.
 
-Scheduled jobs need the gateway to actually fire one. Bind an existing job to a
-project in Settings, press Run now, and confirm within ~30s that the result
-appears in the thread, that a reload still shows it — that is the merge in
-`/api/projects/[id]/messages`, and the check that catches a delivery living
-only in client state — and that whatever the job already delivered to still got
-its copy.
+Scheduled jobs need the gateway to actually fire one. Point an existing job at
+this app in Settings, press Run now, and confirm within ~30s that the result
+appears in the General chat, and that a reload still shows it. That is the
+merge in `/api/projects/[id]/messages`, and the check that catches a delivery
+living only in client state. Then reply to the report there and confirm the
+agent knows what you are talking about.
 
 Push has its own gate, and it is not testable in a browser tab: iOS 16.4+ only
 grants notification permission to a PWA already added to the home screen, over

@@ -3,7 +3,7 @@ import { hermes, type CreateJobParams, type HermesJob } from "@/lib/hermes";
 import { isCronUnavailable, jobErrorResponse } from "@/lib/job-errors";
 import { fireKey, setBinding } from "@/lib/cron-watcher";
 import { publishChange } from "@/lib/api-changes";
-import { ensureScheduledSession } from "@/lib/project-sessions";
+import { ensureGeneralChat } from "@/lib/general-chat-setup";
 
 // Live proxy: never cached. A zero-argument GET is prerendered at build time
 // otherwise, and this one would serve an empty job list forever.
@@ -52,36 +52,30 @@ export async function POST(request: Request) {
     return Response.json({ error: "A schedule is required" }, { status: 400 });
   }
 
-  const projectId = body.binding?.project_id;
-  if (projectId) {
-    const project = db
-      .prepare(`SELECT id FROM projects WHERE id = ?`)
-      .get(projectId);
-    if (!project) {
-      return Response.json({ error: "unknown project" }, { status: 400 });
-    }
-  }
+  /* A binding means "report to this app", and the app has one place for
+   * that: the General chat. `project_id` is still required by the v1 contract
+   * but its value is ignored — older clients send a project's id, which now
+   * lands in General like everything else. */
+  const bind = Boolean(body.binding?.project_id);
 
   try {
-    if (projectId && !(await ensureScheduledSession(projectId))) {
-      return Response.json({ error: "unknown project" }, { status: 400 });
-    }
+    const general = bind ? await ensureGeneralChat() : null;
     const { job } = await hermes.jobs.create({
       name: body.name.trim(),
       schedule: body.schedule.trim(),
       prompt: body.prompt ?? "",
-      /* One destination. A job bound to a project is delivered by this app,
+      /* One destination. A bound job is delivered by this app,
        * which reads the output file Hermes writes regardless — so naming a
        * gateway platform as well would announce the same fire twice. The
        * server decides this rather than trusting the form. */
-      deliver: projectId ? "local" : body.deliver?.trim() || "local",
+      deliver: general ? "local" : body.deliver?.trim() || "local",
       skills: body.skills?.length ? body.skills : undefined,
       repeat: typeof body.repeat === "number" ? body.repeat : undefined,
     });
 
-    if (projectId) {
+    if (general) {
       // A job that has never fired stamps "", so its first output delivers.
-      setBinding(job.id, projectId, fireKey(job) ?? "");
+      setBinding(job.id, general.projectId, fireKey(job) ?? "");
     }
     publishChange("job.changed", { jobId: job.id });
     return Response.json({ job }, { status: 201 });

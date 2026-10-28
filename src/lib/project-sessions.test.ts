@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { prepare, publishChange, transaction } = vi.hoisted(() => ({
+const { generalChat, prepare, publishChange, transaction } = vi.hoisted(() => ({
+  generalChat: vi.fn(),
   prepare: vi.fn(),
   publishChange: vi.fn(),
   transaction: vi.fn(),
@@ -17,12 +18,14 @@ vi.mock("./project-session", () => ({
   renameProjectSession: vi.fn(),
 }));
 vi.mock("./session-title", () => ({ titleFromPrompt: vi.fn() }));
+vi.mock("./bots", () => ({ botName: vi.fn(() => null), hermesForProject: vi.fn() }));
+vi.mock("./general-chat", () => ({ generalChat }));
 
 import {
-  forkProjectSession,
   markScheduledRead,
   projectEntrySession,
   selectProjectSession,
+  withProjectNavigation,
   type ProjectSessionRow,
 } from "./project-sessions";
 
@@ -60,64 +63,62 @@ describe("selectProjectSession", () => {
     expect(publishChange).not.toHaveBeenCalled();
   });
 
-  it("never replaces the last normal chat when Scheduled is selected", () => {
-    const scheduled = session("scheduled");
-    prepare.mockReturnValue({ get: vi.fn().mockReturnValue(scheduled) });
-
-    expect(selectProjectSession("project-1", scheduled.session_id)).toBe(scheduled);
-    expect(prepare).toHaveBeenCalledTimes(1);
-  });
-
-  it("resolves unread Scheduled first, then the most recently active normal chat", () => {
-    const scheduled = session("scheduled");
+  it("opens a project at its most recently active chat", () => {
     const chat = session("chat", "recent-chat");
-    let unread = 1;
     prepare.mockImplementation((sql: string) => {
-      if (sql.includes("kind = 'scheduled'")) {
-        return { get: vi.fn().mockReturnValue(scheduled) };
-      }
-      if (sql.includes("COUNT(*) AS count")) {
-        return { get: vi.fn().mockImplementation(() => ({ count: unread })) };
-      }
-      if (sql.includes("kind = 'chat'")) {
-        return { get: vi.fn().mockReturnValue(chat) };
-      }
+      if (sql.includes("kind = 'chat'")) return { get: vi.fn().mockReturnValue(chat) };
       throw new Error(`unexpected SQL: ${sql}`);
     });
 
-    expect(projectEntrySession("project-1")).toBe(scheduled);
-    unread = 0;
     expect(projectEntrySession("project-1")).toBe(chat);
   });
+});
 
-  it("marks every unread report and publishes the shared badge change", () => {
-    const scheduled = session("scheduled");
+describe("General's unread reports", () => {
+  const general = session("chat", "general-chat");
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    generalChat.mockReturnValue({ projectId: "project-1", sessionId: general.session_id });
+  });
+
+  it("marks every unread report in General's chat and publishes the badge change", () => {
     const mark = vi.fn().mockReturnValue({ changes: 3 });
     prepare.mockImplementation((sql: string) =>
-      sql.includes("kind = 'scheduled'")
-        ? { get: vi.fn().mockReturnValue(scheduled) }
+      sql.includes("SELECT * FROM project_sessions")
+        ? { get: vi.fn().mockReturnValue(general) }
         : { run: mark },
     );
 
     expect(markScheduledRead("project-1")).toBe(3);
-    expect(mark).toHaveBeenCalledWith(
-      expect.any(Number),
-      "project-1",
-      scheduled.session_id,
-    );
+    expect(mark).toHaveBeenCalledWith(expect.any(Number), "project-1", general.session_id);
     expect(publishChange).toHaveBeenCalledWith("cron.read", {
       projectId: "project-1",
-      sessionId: scheduled.session_id,
+      sessionId: general.session_id,
     });
   });
 
-  it("refuses to fork the protected Scheduled session", async () => {
-    const scheduled = session("scheduled");
-    prepare.mockReturnValue({ get: vi.fn().mockReturnValue(scheduled) });
+  it("has nothing to mark in any other project", () => {
+    expect(markScheduledRead("project-2")).toBe(0);
+    expect(prepare).not.toHaveBeenCalled();
+  });
 
-    await expect(
-      forkProjectSession("project-1", scheduled.session_id),
-    ).resolves.toBeNull();
-    expect(transaction).not.toHaveBeenCalled();
+  it("flags General, and only General, with its chat and unread count", () => {
+    prepare.mockImplementation((sql: string) =>
+      sql.includes("COUNT(*) AS count")
+        ? { get: vi.fn().mockReturnValue({ count: 2 }) }
+        : { get: vi.fn().mockReturnValue(general) },
+    );
+
+    expect(withProjectNavigation({ id: "project-1" })).toMatchObject({
+      general: true,
+      scheduled_session_id: general.session_id,
+      unread_scheduled_count: 2,
+    });
+    expect(withProjectNavigation({ id: "project-2" })).toMatchObject({
+      general: false,
+      scheduled_session_id: null,
+      unread_scheduled_count: 0,
+    });
   });
 });

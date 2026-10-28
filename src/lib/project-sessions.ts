@@ -3,6 +3,7 @@ import { publishChange } from "./api-changes";
 import { db } from "./db";
 import { botName, hermesForProject } from "./bots";
 import { HermesApiError } from "./hermes";
+import { generalChat } from "./general-chat";
 import { createProjectSession, renameProjectSession } from "./project-session";
 import { titleFromPrompt } from "./session-title";
 
@@ -85,54 +86,16 @@ export function selectProjectSession(projectId: string, sessionId: string) {
   return session;
 }
 
-export function scheduledSessionFor(projectId: string): ProjectSessionRow | undefined {
-  return db
-    .prepare(
-      `SELECT * FROM project_sessions
-        WHERE project_id = ? AND kind = 'scheduled' AND archived = 0`,
-    )
-    .get(projectId) as ProjectSessionRow | undefined;
+/** The General chat's row, when `projectId` is General. */
+export function generalSessionFor(projectId: string): ProjectSessionRow | undefined {
+  const general = generalChat();
+  if (!general || general.projectId !== projectId) return undefined;
+  return getProjectSession(projectId, general.sessionId);
 }
 
-export async function ensureScheduledSession(
-  projectId: string,
-): Promise<ProjectSessionRow | null> {
-  const existing = scheduledSessionFor(projectId);
-  if (existing) return existing;
-  const project = db.prepare(`SELECT id FROM projects WHERE id = ?`).get(projectId);
-  if (!project) return null;
-
-  const sessionId = `${projectId}__scheduled`;
-  const client = hermesForProject(projectId);
-  try {
-    await client.getSession(sessionId);
-  } catch (error) {
-    if (!(error instanceof HermesApiError) || error.status !== 404) throw error;
-    try {
-      await createProjectSession(sessionId, "Scheduled", client);
-    } catch (createError) {
-      // Two bindings can be saved concurrently. The deterministic upstream id
-      // makes that race recoverable: if the other request created it, proceed.
-      try {
-        await client.getSession(sessionId);
-      } catch {
-        throw createError;
-      }
-    }
-  }
-
-  const now = Date.now();
-  db.prepare(
-    `INSERT OR IGNORE INTO project_sessions
-      (session_id, project_id, title, parent_session_id, created_at, last_active_at, archived, kind)
-     VALUES (?, ?, 'Scheduled', NULL, ?, ?, 0, 'scheduled')`,
-  ).run(sessionId, projectId, now, now);
-  publishChange("session.changed", { projectId, sessionId, kind: "scheduled" });
-  return scheduledSessionFor(projectId) ?? null;
-}
-
+/** Reports in General that nobody has looked at yet. */
 export function unreadScheduledCount(projectId: string): number {
-  const session = scheduledSessionFor(projectId);
+  const session = generalSessionFor(projectId);
   if (!session) return 0;
   return (
     db
@@ -147,19 +110,20 @@ export function unreadScheduledCount(projectId: string): number {
 export function withProjectNavigation<T extends { id: string; profile?: string | null }>(
   project: T,
 ) {
-  const scheduled = scheduledSessionFor(project.id);
+  const general = generalSessionFor(project.id);
   return {
     ...project,
     // What the agent is called in a Bot's project; null = the install's name.
     bot_name: botName(project.profile ?? null),
-    scheduled_session_id: scheduled?.session_id ?? null,
-    unread_scheduled_count: scheduled ? unreadScheduledCount(project.id) : 0,
+    // True for the one project scheduled jobs report into. It keeps a single
+    // chat, so the clients hide new chat and branch for it.
+    general: Boolean(general),
+    scheduled_session_id: general?.session_id ?? null,
+    unread_scheduled_count: general ? unreadScheduledCount(project.id) : 0,
   };
 }
 
 export function projectEntrySession(projectId: string): ProjectSessionRow | null {
-  const scheduled = scheduledSessionFor(projectId);
-  if (scheduled && unreadScheduledCount(projectId) > 0) return scheduled;
   return (
     (db
       .prepare(
@@ -172,7 +136,7 @@ export function projectEntrySession(projectId: string): ProjectSessionRow | null
 }
 
 export function markScheduledRead(projectId: string): number {
-  const session = scheduledSessionFor(projectId);
+  const session = generalSessionFor(projectId);
   if (!session) return 0;
   const result = db
     .prepare(
@@ -215,7 +179,6 @@ export async function forkProjectSession(
 ) {
   const source = getProjectSession(projectId, sourceSessionId);
   if (!source) return null;
-  if (source.kind === "scheduled") return null;
   const sessionId = `${projectId}__f${randomUUID().slice(0, 8)}`;
   const title = requestedTitle?.trim() || `${source.title} branch`;
   const forked = await hermesForProject(projectId).forkSession(sourceSessionId, {
@@ -252,7 +215,6 @@ export async function renameSession(
   const session = getProjectSession(projectId, sessionId);
   const normalized = title.trim();
   if (!session || !normalized) return null;
-  if (session.kind === "scheduled") return null;
   // The local title is the product contract. Older Hermes builds may not have
   // PATCH sessions; a missing mirror must not make a usable local tree fail.
   // A Bot Chat is renamed here only: upstream, its title *is* what makes it
@@ -303,13 +265,81 @@ export function sessionSubtree(projectId: string, sessionId: string): ProjectSes
     .all(projectId, sessionId, projectId) as ProjectSessionRow[];
 }
 
+/**
+ * Deletes Hermes sessions, tolerating ones that are already gone: a retry
+ * after a partially successful delete must be safe.
+ */
+export async function deleteUpstreamSessions(projectId: string, sessionIds: string[]) {
+  const client = hermesForProject(projectId);
+  for (const sessionId of sessionIds) {
+    try {
+      await client.deleteSession(sessionId);
+    } catch (error) {
+      if (!(error instanceof HermesApiError) || error.status !== 404) throw error;
+    }
+  }
+}
+
+/**
+ * Drops the local rows for a set of sessions in one project, and moves the
+ * project's fallback pointers onto `replacementSessionId` if they named one of
+ * them. `run_events` has no project_id and no foreign key, so it goes first.
+ */
+export function purgeLocalSessions(
+  projectId: string,
+  sessionIds: string[],
+  replacementSessionId: string,
+) {
+  if (sessionIds.length === 0) return;
+  const ids = new Set(sessionIds);
+  const placeholders = sessionIds.map(() => "?").join(",");
+  const project = db
+    .prepare(`SELECT session_id, last_chat_session_id FROM projects WHERE id = ?`)
+    .get(projectId) as
+    | { session_id: string; last_chat_session_id: string | null }
+    | undefined;
+
+  db.transaction(() => {
+    db.prepare(
+      `DELETE FROM run_events WHERE run_id IN (
+         SELECT run_id FROM runs WHERE project_id = ? AND session_id IN (${placeholders})
+       )`,
+    ).run(projectId, ...sessionIds);
+    db.prepare(
+      `DELETE FROM runs WHERE project_id = ? AND session_id IN (${placeholders})`,
+    ).run(projectId, ...sessionIds);
+    db.prepare(
+      `DELETE FROM queued_messages WHERE project_id = ? AND session_id IN (${placeholders})`,
+    ).run(projectId, ...sessionIds);
+    db.prepare(
+      `DELETE FROM cron_deliveries WHERE project_id = ? AND session_id IN (${placeholders})`,
+    ).run(projectId, ...sessionIds);
+    db.prepare(
+      `DELETE FROM project_sessions WHERE project_id = ? AND session_id IN (${placeholders})`,
+    ).run(projectId, ...sessionIds);
+    if (
+      project &&
+      (ids.has(project.session_id) ||
+        (project.last_chat_session_id && ids.has(project.last_chat_session_id)))
+    ) {
+      const nextLegacy = ids.has(project.session_id)
+        ? replacementSessionId
+        : project.session_id;
+      const nextLastChat =
+        project.last_chat_session_id && !ids.has(project.last_chat_session_id)
+          ? project.last_chat_session_id
+          : replacementSessionId;
+      db.prepare(
+        `UPDATE projects SET session_id = ?, last_chat_session_id = ? WHERE id = ?`,
+      ).run(nextLegacy, nextLastChat, projectId);
+    }
+  })();
+}
+
 export async function deleteSessionSubtree(projectId: string, sessionId: string) {
   const all = listProjectSessions(projectId);
   const subtree = sessionSubtree(projectId, sessionId);
   if (subtree.length === 0) return { kind: "not_found" as const };
-  if (subtree.some((session) => session.kind === "scheduled")) {
-    return { kind: "protected_session" as const };
-  }
   // The Bot's forever-chat belongs to the Bot, not to this project — Desktop,
   // CLI and other Bots' messages all land in it.
   if (subtree.some((session) => session.bot_chat === 1)) {
@@ -320,65 +350,16 @@ export async function deleteSessionSubtree(projectId: string, sessionId: string)
   );
   if (remainingChats.length === 0) return { kind: "last_session" as const };
 
-  const client = hermesForProject(projectId);
-  for (const session of [...subtree].reverse()) {
-    try {
-      await client.deleteSession(session.session_id);
-    } catch (error) {
-      // A retry after a partially successful upstream delete is safe.
-      if (!(error instanceof HermesApiError) || error.status !== 404) throw error;
-    }
-  }
+  const ids = subtree.map((session) => session.session_id);
+  await deleteUpstreamSessions(projectId, [...ids].reverse());
 
-  const ids = new Set(subtree.map((session) => session.session_id));
-  const project = db
-    .prepare(`SELECT session_id, last_chat_session_id FROM projects WHERE id = ?`)
-    .get(projectId) as
-    | { session_id: string; last_chat_session_id: string | null }
-    | undefined;
-  const remaining = remainingChats
-    .sort((a, b) => b.last_active_at - a.last_active_at);
-  const replacement = remaining[0];
-
-  db.transaction(() => {
-    const placeholders = subtree.map(() => "?").join(",");
-    db.prepare(
-      `DELETE FROM run_events WHERE run_id IN (
-         SELECT run_id FROM runs WHERE session_id IN (${placeholders})
-       )`,
-    ).run(...subtree.map((session) => session.session_id));
-    db.prepare(
-      `DELETE FROM runs WHERE project_id = ? AND session_id IN (${placeholders})`,
-    ).run(projectId, ...subtree.map((session) => session.session_id));
-    db.prepare(
-      `DELETE FROM queued_messages WHERE project_id = ? AND session_id IN (${placeholders})`,
-    ).run(projectId, ...subtree.map((session) => session.session_id));
-    db.prepare(
-      `DELETE FROM cron_deliveries WHERE project_id = ? AND session_id IN (${placeholders})`,
-    ).run(projectId, ...subtree.map((session) => session.session_id));
-    db.prepare(`DELETE FROM project_sessions WHERE session_id = ?`).run(sessionId);
-    if (
-      project &&
-      (ids.has(project.session_id) ||
-        (project.last_chat_session_id && ids.has(project.last_chat_session_id)))
-    ) {
-      const nextLegacy = ids.has(project.session_id)
-        ? replacement.session_id
-        : project.session_id;
-      const nextLastChat =
-        project.last_chat_session_id && !ids.has(project.last_chat_session_id)
-          ? project.last_chat_session_id
-          : replacement.session_id;
-      db.prepare(
-        `UPDATE projects SET session_id = ?, last_chat_session_id = ? WHERE id = ?`,
-      ).run(nextLegacy, nextLastChat, projectId);
-    }
-  })();
+  const replacement = remainingChats.sort((a, b) => b.last_active_at - a.last_active_at)[0];
+  purgeLocalSessions(projectId, ids, replacement.session_id);
 
   publishChange("session.deleted", {
     projectId,
     sessionId,
-    deletedSessionIds: [...ids],
+    deletedSessionIds: ids,
     replacementSessionId: replacement.session_id,
   });
   return { kind: "deleted" as const, sessionId: replacement.session_id };

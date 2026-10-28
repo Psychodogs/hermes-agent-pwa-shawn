@@ -4,7 +4,10 @@ vi.mock("./db", () => ({ db: {} }));
 vi.mock("./hermes", () => ({ hermes: {} }));
 vi.mock("./run-manager", () => ({ runManager: {} }));
 vi.mock("./push", () => ({ sendToAll: vi.fn() }));
-vi.mock("./project-sessions", () => ({ ensureScheduledSession: vi.fn() }));
+vi.mock("./general-chat-setup", () => ({
+  ensureGeneralChat: vi.fn(),
+  migrateScheduledToGeneral: vi.fn(),
+}));
 vi.mock("./api-changes", () => ({ publishChange: vi.fn() }));
 
 import { isSilent, parseJobOutput, planOutputFiles } from "./cron-watcher";

@@ -180,8 +180,11 @@ export interface Project {
   model_options: string | null;
   session_id: string;
   last_chat_session_id: string | null;
+  /** The General chat's id, on the General project only. */
   scheduled_session_id: string | null;
   unread_scheduled_count: number;
+  /** The one project scheduled jobs report into; it keeps a single chat. */
+  general?: boolean;
   created_at: number;
   last_active_at: number;
   archived: number;

@@ -79,7 +79,8 @@ export function AppShell({
       key: "o",
       mod: true,
       shift: true,
-      when: Boolean(activeProject),
+      // General keeps a single chat; scheduled jobs report into it.
+      when: Boolean(activeProject) && !activeProject?.general,
       run: () => setNewChatOpen(true),
     },
     { key: "ArrowUp", alt: true, when: siblings.length > 1, run: () => stepSession(-1) },
@@ -211,6 +212,7 @@ export function AppShell({
                     onSearch={() => setSearchOpen(true)}
                     onShortcuts={() => setShortcutsOpen(true)}
                   />
+                  {!activeProject?.general && (
                   <button
                     type="button"
                     aria-label={activeProject ? "New chat" : "New project"}
@@ -222,6 +224,7 @@ export function AppShell({
                   >
                     <IconEdit size={20} />
                   </button>
+                  )}
                 </div>
               </div>
             </header>

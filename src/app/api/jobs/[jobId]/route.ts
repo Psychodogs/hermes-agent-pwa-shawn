@@ -1,9 +1,8 @@
-import { db } from "@/lib/db";
 import { hermes, type UpdateJobParams } from "@/lib/hermes";
 import { JOB_ID_RE, jobErrorResponse } from "@/lib/job-errors";
 import { clearBinding, fireKey, getBinding, setBinding } from "@/lib/cron-watcher";
 import { publishChange } from "@/lib/api-changes";
-import { ensureScheduledSession } from "@/lib/project-sessions";
+import { ensureGeneralChat } from "@/lib/general-chat-setup";
 
 export const dynamic = "force-dynamic";
 
@@ -42,7 +41,7 @@ export async function PATCH(request: Request, ctx: RouteContext<"/api/jobs/[jobI
   if (typeof body.name === "string") patch.name = body.name.trim();
   if (typeof body.schedule === "string") patch.schedule = body.schedule.trim();
   if (typeof body.prompt === "string") patch.prompt = body.prompt;
-  /* One destination: binding a project forces Hermes' own delivery off, so a
+  /* One destination: binding to this app forces Hermes' own delivery off, so a
    * fire is announced once. Decided here rather than in the sheet, so the rule
    * holds for any caller. */
   if (body.binding?.project_id) patch.deliver = "local";
@@ -54,18 +53,11 @@ export async function PATCH(request: Request, ctx: RouteContext<"/api/jobs/[jobI
   // sending the number would replace the dict and break every later read of
   // repeat.times in the scheduler.
 
-  const bindingProjectId = body.binding?.project_id;
-  if (bindingProjectId) {
-    const project = db.prepare(`SELECT id FROM projects WHERE id = ?`).get(bindingProjectId);
-    if (!project) {
-      return Response.json({ error: "unknown project" }, { status: 400 });
-    }
-  }
+  // Any project_id binds to General; see POST /api/jobs.
+  const bind = Boolean(body.binding?.project_id);
 
   try {
-    if (bindingProjectId && !(await ensureScheduledSession(bindingProjectId))) {
-      return Response.json({ error: "unknown project" }, { status: 400 });
-    }
+    const general = bind ? await ensureGeneralChat() : null;
     const job = Object.keys(patch).length
       ? (await hermes.jobs.update(jobId, patch)).job
       : (await hermes.jobs.get(jobId)).job;
@@ -74,13 +66,13 @@ export async function PATCH(request: Request, ctx: RouteContext<"/api/jobs/[jobI
     // editing a job's prompt should not quietly change where it lands.
     if (body.binding === null) {
       clearBinding(jobId);
-    } else if (bindingProjectId) {
+    } else if (general) {
       // Only stamp on a *new* binding. Re-stamping an existing one on every
       // save would swallow a fire that landed between the edit and the save.
       const existing = getBinding(jobId);
       setBinding(
         jobId,
-        bindingProjectId,
+        general.projectId,
         existing ? existing.last_seen_at : (fireKey(job) ?? ""),
       );
     }

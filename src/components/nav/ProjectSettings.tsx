@@ -325,8 +325,8 @@ function ProjectSettingsForm({
       {/* Thread lifecycle — reversible things first, then the one that isn't. */}
       <div className="flex flex-col gap-0.5 border-t border-line pt-4">
         {/* Hidden on a Hermes without POST /api/sessions/{id}/fork, which would
-          * only 404. */}
-        {features.session_fork && (
+          * only 404 — and on General, which keeps a single chat. */}
+        {features.session_fork && !project.general && (
           <button
             type="button"
             onClick={branch}
@@ -336,7 +336,7 @@ function ProjectSettingsForm({
             Branch this session
           </button>
         )}
-        {!confirmReset ? (
+        {project.general ? null : !confirmReset ? (
           <button
             type="button"
             onClick={() => setConfirmReset(true)}

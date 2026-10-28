@@ -11,7 +11,6 @@ import {
   buttonClass,
 } from "@/components/ui/SettingsControls";
 import type { Job } from "@/hooks/useJobs";
-import type { Project } from "@/lib/chat-types";
 
 /* Create or edit one Hermes cron job.
  *
@@ -37,14 +36,12 @@ const ROW_ACTION =
 
 export function JobSheet({
   job,
-  projects,
   open,
   onClose,
   onSaved,
 }: {
   /** absent for a new job */
   job?: Job;
-  projects: Project[];
   open: boolean;
   onClose: () => void;
   onSaved: () => void;
@@ -55,7 +52,6 @@ export function JobSheet({
       {open && (
         <JobForm
           job={job}
-          projects={projects}
           onClose={onClose}
           onSaved={onSaved}
         />
@@ -66,12 +62,10 @@ export function JobSheet({
 
 function JobForm({
   job,
-  projects,
   onClose,
   onSaved,
 }: {
   job?: Job;
-  projects: Project[];
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -82,10 +76,11 @@ function JobForm({
   const [repeat, setRepeat] = useState(
     job?.repeat?.times != null ? String(job.repeat.times) : "",
   );
-  /* One control, two shapes. `destination` is a project id, or "hermes" when
-   * the gateway posts it, and `deliver` is only meaningful in the second. */
+  /* One control, two shapes. `destination` is "general" when this app
+   * delivers it into the General chat, or "hermes" when the gateway posts it,
+   * and `deliver` is only meaningful in the second. */
   const [destination, setDestination] = useState(
-    job?.binding?.project_id ?? (job && job.deliver !== "local" ? "hermes" : ""),
+    job?.binding ? "general" : job && job.deliver !== "local" ? "hermes" : "",
   );
   const [deliver, setDeliver] = useState(
     job && job.deliver !== "local" ? job.deliver : "",
@@ -119,15 +114,17 @@ function JobForm({
     event.preventDefault();
     if (busy || !name.trim() || !schedule.trim()) return;
 
-    const toProject = destination !== "" && destination !== "hermes";
-    const binding = toProject ? { project_id: destination } : null;
+    const toGeneral = destination === "general";
+    // The route ignores the id and binds to General; the v1 contract still
+    // requires one.
+    const binding = toGeneral ? { project_id: "general" } : null;
     const payload = {
       name: name.trim(),
       schedule: schedule.trim(),
       prompt,
-      // The route forces "local" whenever a project is bound; sending it here
+      // The route forces "local" whenever a job is bound; sending it here
       // too just keeps the request honest about what was asked for.
-      deliver: toProject ? "local" : destination === "hermes" ? deliver.trim() : "local",
+      deliver: toGeneral ? "local" : destination === "hermes" ? deliver.trim() : "local",
       skills,
       // Only on create: blank means forever, which is what omitting it means
       // to Hermes. The edit path never sends it — see the Runs block below.
@@ -247,9 +244,9 @@ function JobForm({
           Report to
         </label>
         <p className={`mt-0.5 ${HELP_CLASS}`}>
-          One place. A job bound to a project here appears in that thread and
-          notifies this device; one delivered by Hermes goes wherever the
-          gateway sends it and this app stays out of the way.
+          One place. A job reporting here lands in the General chat, where you
+          can reply to it, and notifies this device; one delivered by Hermes
+          goes wherever the gateway sends it and this app stays out of the way.
         </p>
         <select
           id="job-destination"
@@ -258,14 +255,7 @@ function JobForm({
           className={`mt-2.5 ${FIELD_CLASS}`}
         >
           <option value="">Nowhere — just keep the output on disk</option>
-          <optgroup label="Projects">
-            {projects.map((project) => (
-              <option key={project.id} value={project.id}>
-                {project.emoji ? `${project.emoji} ` : ""}
-                {project.name}
-              </option>
-            ))}
-          </optgroup>
+          <option value="general">The General chat in this app</option>
           <optgroup label="Hermes gateway">
             <option value="hermes">A gateway platform…</option>
           </optgroup>
@@ -366,7 +356,7 @@ function JobForm({
               <p className="text-ui font-semibold text-ink">Delete “{job.name}”?</p>
               <p className="mt-1 text-label text-ink-2">
                 Hermes also deletes its own record of every run. What it already
-                delivered into a project here stays in that thread.
+                delivered into the General chat stays there.
               </p>
               <div className="mt-3 flex items-center justify-end gap-2">
                 <button

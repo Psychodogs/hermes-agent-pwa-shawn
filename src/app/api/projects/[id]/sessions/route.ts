@@ -1,3 +1,4 @@
+import { generalSingleChatRefusal } from "@/lib/general-chat";
 import { createRootSession, listProjectSessions, sessionDto } from "@/lib/project-sessions";
 import { hermesErrorResponse } from "@/lib/project-session";
 import { runManager } from "@/lib/run-manager";
@@ -18,6 +19,8 @@ export async function GET(_request: Request, ctx: Context) {
 
 export async function POST(request: Request, ctx: Context) {
   const { id } = await ctx.params;
+  const refusal = generalSingleChatRefusal(id);
+  if (refusal) return refusal;
   const body = (await request.json().catch(() => ({}))) as { title?: unknown };
   const title =
     typeof body.title === "string" && body.title.trim() ? body.title.trim() : "New chat";

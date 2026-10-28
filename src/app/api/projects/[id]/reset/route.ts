@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { generalSingleChatRefusal } from "@/lib/general-chat";
 import { hermesErrorResponse } from "@/lib/project-session";
 import { createRootSession, sessionDto } from "@/lib/project-sessions";
 import { runManager } from "@/lib/run-manager";
@@ -11,6 +12,8 @@ export async function POST(req: Request, ctx: RouteContext<"/api/projects/[id]/r
   const { id } = await ctx.params;
   const project = runManager.getProject(id);
   if (!project) return Response.json({ error: "not found" }, { status: 404 });
+  const refusal = generalSingleChatRefusal(id);
+  if (refusal) return refusal;
   // `/new [name]` titles the new session. The project keeps its own name —
   // renaming the project is /title.
   const body = (await req.json().catch(() => ({}))) as { name?: unknown };

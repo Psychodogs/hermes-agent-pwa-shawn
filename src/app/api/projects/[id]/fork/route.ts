@@ -1,4 +1,5 @@
 import { HermesApiError } from "@/lib/hermes";
+import { generalSingleChatRefusal } from "@/lib/general-chat";
 import { forkProjectSession, sessionDto } from "@/lib/project-sessions";
 import { runManager } from "@/lib/run-manager";
 
@@ -10,6 +11,8 @@ export async function POST(req: Request, ctx: RouteContext<"/api/projects/[id]/f
   const { id } = await ctx.params;
   const project = runManager.getProject(id);
   if (!project) return Response.json({ error: "not found" }, { status: 404 });
+  const refusal = generalSingleChatRefusal(id);
+  if (refusal) return refusal;
 
   const body = await req.json().catch(() => ({}) as Record<string, unknown>);
   const name = typeof body.name === "string" ? body.name.trim() : "";

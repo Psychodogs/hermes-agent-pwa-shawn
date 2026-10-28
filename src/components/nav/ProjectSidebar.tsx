@@ -34,6 +34,7 @@ function SessionBranch({
   onSelect,
   onRename,
   onDelete,
+  generalSessionId,
   unreadScheduledCount,
   depth = 0,
 }: {
@@ -44,11 +45,14 @@ function SessionBranch({
   /** resolves to an error message, or null on success */
   onRename: (session: ProjectSession, title: string) => Promise<string | null>;
   onDelete: (session: ProjectSession) => Promise<string | null>;
+  /** General's one chat, where scheduled jobs report */
+  generalSessionId: string | null;
   unreadScheduledCount: number;
   depth?: number;
 }) {
   const children = childrenByParent.get(session.session_id) ?? [];
   const active = session.session_id === activeSessionId;
+  const general = session.session_id === generalSessionId;
   // The row itself turns into the rename field or the delete confirmation,
   // rather than a browser prompt() — which an installed app draws as a bare
   // system dialog, and which some browsers suppress altogether.
@@ -128,7 +132,7 @@ function SessionBranch({
             className="flex min-w-0 flex-1 items-center gap-2 py-2 text-left"
           >
             <span aria-hidden className="flex size-6 shrink-0 items-center justify-center text-ink-3">
-              {session.kind === "scheduled" ? (
+              {general ? (
                 <IconClock size={14} />
               ) : depth > 0 ? (
                 <IconBranch size={14} />
@@ -136,14 +140,14 @@ function SessionBranch({
             </span>
             <span className="min-w-0 flex-1 truncate">{session.title}</span>
             {active && <RunDot />}
-            {session.kind === "scheduled" && unreadScheduledCount > 0 && (
+            {general && unreadScheduledCount > 0 && (
               <span className="min-w-5 rounded-full bg-accent-tint px-1.5 text-center text-meta font-medium text-ink tabular-nums">
                 {unreadScheduledCount}
               </span>
             )}
           </button>
         )}
-        {active && session.kind !== "scheduled" && mode === "idle" && (
+        {active && mode === "idle" && (
           <Menu label={`Manage ${session.title}`} align="end" trigger={<IconMore size={16} />}>
             {(close) => (
               <>
@@ -157,8 +161,9 @@ function SessionBranch({
                   }}
                 />
                 {/* A Bot Chat belongs to its Bot — the desktop app, the CLI
-                    and other Bots all write to it — so the server refuses. */}
-                {session.bot_chat !== 1 && (
+                    and other Bots all write to it — so the server refuses.
+                    General's chat is its only one, which it refuses too. */}
+                {session.bot_chat !== 1 && !general && (
                   <MenuItem
                     icon={<IconTrash size={14} />}
                     label="Delete"
@@ -221,6 +226,7 @@ function SessionBranch({
               onSelect={onSelect}
               onRename={onRename}
               onDelete={onDelete}
+              generalSessionId={generalSessionId}
               unreadScheduledCount={unreadScheduledCount}
               depth={depth + 1}
             />
@@ -480,6 +486,7 @@ export function ProjectSidebar({
                 onSelect={select}
                 onRename={rename}
                 onDelete={remove}
+                generalSessionId={project.scheduled_session_id}
                 unreadScheduledCount={project.unread_scheduled_count}
               />
             ))}

@@ -382,27 +382,13 @@ function NotificationsSection() {
  *
  * Global rather than per project because that is what they are: the schedule
  * lives in the gateway and is shared with the CLI and Telegram, and a job
- * needs no project at all. The binding — which project it also lands in — is
- * a property of the job, shown here as a chip.
+ * needs no project at all. Whether it reports to this app — always into the
+ * General chat — is a property of the job, shown here as a chip.
  */
 function ScheduledSection() {
   const { jobs, unavailable, error, refresh } = useJobs();
-  const [projects, setProjects] = useState<Project[]>([]);
   const [editing, setEditing] = useState<Job | null>(null);
   const [creating, setCreating] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/projects")
-      .then((r) => r.json())
-      .then((body: { projects?: Project[] }) => {
-        if (!cancelled) setProjects(body.projects ?? []);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   // Nothing until the list is known, same as Archived — a heading that appears
   // and then rearranges itself is worse than one that arrives a beat late.
@@ -424,7 +410,7 @@ function ScheduledSection() {
     <>
       <SettingsSection
         title="Scheduled"
-        description="Hermes' cron jobs — the same ones the CLI and Telegram see. Bind one to a project and its result lands in that thread too."
+        description="Hermes' cron jobs — the same ones the CLI and Telegram see. Point one at this app and its result lands in the General chat, where you can reply to it."
       >
         {jobs.map((job) => (
           <button
@@ -442,7 +428,7 @@ function ScheduledSection() {
                 <span className="flex shrink-0 items-center gap-1.5">
                   {job.binding && (
                     <span className="max-w-[7rem] truncate rounded-chip bg-field px-1.5 text-meta text-ink-2">
-                      {job.binding.project_name ?? "project"}
+                      {job.binding.project_name ?? "General"}
                     </span>
                   )}
                   <span
@@ -473,7 +459,6 @@ function ScheduledSection() {
       </SettingsSection>
 
       <JobSheet
-        projects={projects}
         open={creating}
         onClose={() => setCreating(false)}
         onSaved={refresh}
@@ -481,7 +466,6 @@ function ScheduledSection() {
       {editing && (
         <JobSheet
           job={editing}
-          projects={projects}
           open
           onClose={() => setEditing(null)}
           onSaved={refresh}

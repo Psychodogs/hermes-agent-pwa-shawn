@@ -7,7 +7,7 @@ import { db } from "./db";
 import { hermes, type HermesJob } from "./hermes";
 import { runManager } from "./run-manager";
 import { sendToAll } from "./push";
-import { ensureScheduledSession } from "./project-sessions";
+import { ensureGeneralChat, migrateScheduledToGeneral } from "./general-chat-setup";
 import { publishChange } from "./api-changes";
 import { markdownToPlainText } from "./markdown";
 
@@ -30,7 +30,10 @@ import { markdownToPlainText } from "./markdown";
  *
  * Binding routes make the app the job's single destination by setting Hermes'
  * delivery mode to local. The watcher then turns each saved output file into
- * one durable report in the project's Scheduled inbox.
+ * one durable report in the General chat (general-chat.ts) — one chat for the
+ * whole install, the way Hermes itself delivers into a home channel or a Bot
+ * Chat. It is a plain message, not a turn: nothing runs until you reply, and
+ * then the report rides along in the run's conversation history.
  */
 
 const POLL_MS = 30_000;
@@ -209,7 +212,8 @@ export function getBinding(jobId: string): CronBinding | undefined {
 }
 
 /**
- * Binds a job to a project.
+ * Binds a job to this app. Every binding reports into General; the
+ * project_id column is kept so the schema doesn't churn, and always names it.
  *
  * `lastSeenAt` carries the file of the job's *current* last fire, so binding a
  * job that has been running for months does not dump its back-issues into the
@@ -219,47 +223,33 @@ export function getBinding(jobId: string): CronBinding | undefined {
  */
 export function setBinding(
   jobId: string,
-  projectId: string,
+  generalProjectId: string,
   lastSeenAt: string | null,
 ) {
   db.prepare(
     `INSERT INTO cron_bindings (job_id, project_id, last_seen_at, created_at)
      VALUES (?, ?, ?, ?)
      ON CONFLICT(job_id) DO UPDATE SET project_id = excluded.project_id`,
-  ).run(jobId, projectId, lastSeenAt, Date.now());
+  ).run(jobId, generalProjectId, lastSeenAt, Date.now());
 }
 
 export function clearBinding(jobId: string) {
   db.prepare(`DELETE FROM cron_bindings WHERE job_id = ?`).run(jobId);
 }
 
-/**
- * Scoped to the session the project currently points at, for the same reason
- * `getLatestRun` is: `/new` leaves the old rows in place, and an unscoped read
- * would replay a discarded thread's deliveries into the empty one.
- */
+/** The reports delivered into one session — in practice, General's chat. */
 export function deliveriesFor(projectId: string, sessionId: string): CronDelivery[] {
   return db
     .prepare(
       `SELECT * FROM cron_deliveries
-        WHERE (project_id = ? AND session_id = ?)
-           OR id IN (
-             SELECT delivery_id FROM cron_discussions WHERE session_id = ?
-           )
+        WHERE project_id = ? AND session_id = ?
         ORDER BY ts ASC`,
     )
-    .all(projectId, sessionId, sessionId) as CronDelivery[];
+    .all(projectId, sessionId) as CronDelivery[];
 }
 
-async function deliver(job: HermesJob, binding: CronBinding, file: string) {
-  const project = db
-    .prepare(`SELECT name FROM projects WHERE id = ?`)
-    .get(binding.project_id) as { name: string } | undefined;
-  // The binding is ON DELETE CASCADE, so this only happens in the window
-  // between a project being deleted and the tick that noticed.
-  if (!project) return;
-  const scheduled = await ensureScheduledSession(binding.project_id);
-  if (!scheduled) return;
+async function deliver(job: HermesJob, file: string) {
+  const general = await ensureGeneralChat();
 
   /* turbopackIgnore silences the build-time warning about dynamic filesystem
    * access. The path genuinely is dynamic and genuinely is outside the
@@ -274,8 +264,8 @@ async function deliver(job: HermesJob, binding: CronBinding, file: string) {
   const delivery: CronDelivery = {
     id: `cd_${randomUUID()}`,
     job_id: job.id,
-    project_id: binding.project_id,
-    session_id: scheduled.session_id,
+    project_id: general.projectId,
+    session_id: general.sessionId,
     job_name: job.name,
     status,
     body,
@@ -309,22 +299,22 @@ async function deliver(job: HermesJob, binding: CronBinding, file: string) {
   db.transaction(() => {
     db.prepare(`UPDATE projects SET last_active_at = ? WHERE id = ?`).run(
       activeAt,
-      binding.project_id,
+      general.projectId,
     );
     db.prepare(
       `UPDATE project_sessions SET last_active_at = ? WHERE session_id = ?`,
-    ).run(activeAt, scheduled.session_id);
+    ).run(activeAt, general.sessionId);
   })();
 
   // Live, for a thread that happens to be open. The durable copy is the row
   // above, which the history route merges back in on reload.
-  runManager.emitProject(binding.project_id, scheduled.session_id, {
+  runManager.emitProject(general.projectId, general.sessionId, {
     event: "cron.delivered",
     delivery,
   });
   publishChange("cron.delivered", {
-    projectId: binding.project_id,
-    sessionId: scheduled.session_id,
+    projectId: general.projectId,
+    sessionId: general.sessionId,
     deliveryId: delivery.id,
   });
 
@@ -332,22 +322,36 @@ async function deliver(job: HermesJob, binding: CronBinding, file: string) {
    * `deliver: "local"` on it — so this is the only thing that will announce
    * the fire. Whether this device wants job notifications at all is a
    * per-device question, and Settings → Notifications is where it is asked. */
+  // Titled by the job, not the project: every job reports into General, so
+  // the project name would read the same on every notification.
   await sendToAll({
-    title: project.name,
+    title: job.name,
     body:
       status === "failed"
-        ? `${job.name} failed.`
-        : `${job.name}: ${markdownToPlainText(body).slice(0, 140)}`,
-    url: `/p/${binding.project_id}/s/${scheduled.session_id}`,
-    // Its own tag: a scheduled result arriving overnight must not silently
-    // replace the notification for the run you were watching before bed.
-    tag: `${APP_SLUG}-job-${binding.project_id}`,
+        ? "The scheduled run failed."
+        : markdownToPlainText(body).slice(0, 140),
+    url: `/p/${general.projectId}/s/${general.sessionId}`,
+    // Its own tag, per job: a scheduled result arriving overnight must not
+    // silently replace the notification for the run you were watching before
+    // bed, nor another job's report from an hour earlier.
+    tag: `${APP_SLUG}-job-${job.id}`,
     kind: status === "failed" ? "job-failed" : "job",
   });
 }
 
 /** One pass. Exported so a route can force a check without waiting 30s. */
 export async function tick(): Promise<void> {
+  // Before the early return below: a node whose bindings were all cleared can
+  // still have the retired Scheduled inboxes and reply threads to remove.
+  // Never fatal: reports are re-homed before anything is deleted, so delivery
+  // is safe whatever the cleanup's state, and a Bot whose gateway refuses the
+  // delete must not stop every job from reporting.
+  try {
+    await migrateScheduledToGeneral();
+  } catch (err) {
+    console.error("[cron] retiring the Scheduled inboxes failed; will retry:", err);
+  }
+
   const bindings = listBindings();
   if (bindings.length === 0) return;
 
@@ -358,14 +362,6 @@ export async function tick(): Promise<void> {
   const byId = new Map(jobs.map((job) => [job.id, job]));
 
   for (const binding of bindings) {
-    try {
-      // Upgrade-era bindings may predate the Scheduled inbox. Repair them on
-      // the first healthy watcher pass even when no new output is waiting.
-      await ensureScheduledSession(binding.project_id);
-    } catch (err) {
-      console.error(`[cron] scheduled inbox repair failed for job ${binding.job_id}:`, err);
-      continue;
-    }
     const job = byId.get(binding.job_id);
     // The job was deleted in the CLI, or this gateway isn't the one that has
     // it. Leave the binding — the deliveries it already made are still real,
@@ -390,7 +386,7 @@ export async function tick(): Promise<void> {
       }
 
       for (const file of plan.pending) {
-        await deliver(job, binding, file);
+        await deliver(job, file);
         db.prepare(`UPDATE cron_bindings SET last_seen_at = ? WHERE job_id = ?`).run(
           file,
           binding.job_id,

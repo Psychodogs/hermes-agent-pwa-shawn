@@ -40,3 +40,13 @@ export function setAgentName(raw: string): string {
   put.run("agent_name", name);
   return name || APP_NAME;
 }
+
+/** A raw setting, for install-wide state that isn't user-facing. */
+export function readSetting(key: string): string | null {
+  const row = get.get(key) as { value: string } | undefined;
+  return row?.value ?? null;
+}
+
+export function writeSetting(key: string, value: string) {
+  put.run(key, value);
+}

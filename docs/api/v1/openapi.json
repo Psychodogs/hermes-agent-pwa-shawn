@@ -296,7 +296,8 @@
       "parameters": [{ "$ref": "#/components/parameters/ProjectId" }],
       "post": {
         "operationId": "markScheduledRead",
-        "summary": "Mark every currently unread scheduled report read globally",
+        "summary": "Mark every unread report in the General chat read",
+        "description": "Answers 404 for any project other than General. Fetching the newest page of the General chat's messages also marks its reports read.",
         "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }],
         "responses": {
           "200": { "description": "Read state updated", "content": { "application/json": { "schema": { "type": "object", "required": ["ok", "markedRead"], "properties": { "ok": { "const": true }, "markedRead": { "type": "integer", "minimum": 0 } } } } } },
@@ -309,11 +310,14 @@
       "parameters": [{ "$ref": "#/components/parameters/ProjectId" }],
       "post": {
         "operationId": "replyToScheduledReport",
-        "summary": "Create a normal root discussion from a scheduled report",
+        "deprecated": true,
+        "summary": "Retired: always answers 410 scheduled_reply_removed",
+        "description": "Scheduled reports now arrive in the General chat (the project whose scheduledSessionId is set). Reply there with an ordinary message to that session.",
         "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }],
         "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ScheduledReply" } } } },
         "responses": {
-          "202": { "description": "Discussion created; startupError is present when the initial run could not be started", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ScheduledReplyResult" } } } },
+          "202": { "description": "Never returned since the endpoint was retired; kept so the schema stays a superset of what old servers sent", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ScheduledReplyResult" } } } },
+          "410": { "$ref": "#/components/responses/Error" },
           "400": { "$ref": "#/components/responses/Error" },
           "401": { "$ref": "#/components/responses/Error" },
           "404": { "$ref": "#/components/responses/Error" },
@@ -717,9 +721,9 @@
           "modelSelection": { "$ref": "#/components/schemas/ModelSelection" },
           "activeSessionId": { "type": "string", "description": "Server fallback session for cold starts and legacy routes; not a cross-device UI selection." },
           "sessionId": { "type": "string", "deprecated": true, "description": "Compatibility alias for activeSessionId." },
-          "lastChatSessionId": { "type": "string", "description": "Most recently selected normal chat; Scheduled never overwrites it." },
-          "scheduledSessionId": { "type": ["string", "null"] },
-          "unreadScheduledCount": { "type": "integer", "minimum": 0 },
+          "lastChatSessionId": { "type": "string", "description": "Most recently selected normal chat." },
+          "scheduledSessionId": { "type": ["string", "null"], "description": "Set on the General project only: its single chat, where every bound scheduled job reports. It is an ordinary chat (kind \"chat\"); reply to reports with a normal message. General refuses new chats and branches with 409 general_single_chat." },
+          "unreadScheduledCount": { "type": "integer", "minimum": 0, "description": "Unread reports in the General chat; 0 for every other project." },
           "createdAt": { "type": "integer" },
           "lastActiveAt": { "type": "integer" },
           "archived": { "type": "boolean" },
@@ -777,7 +781,7 @@
           "createdAt": { "type": "integer" },
           "lastActiveAt": { "type": "integer" },
           "archived": { "type": "boolean" },
-          "kind": { "enum": ["chat", "scheduled"] },
+          "kind": { "enum": ["chat", "scheduled"], "description": "Always \"chat\" from current servers. \"scheduled\" was the retired per-project Scheduled inbox and is kept in the enum for older servers." },
           "botChat": { "type": "boolean", "description": "True on a Bot's canonical \"Bot Chat\": never renamed upstream and not deletable through this API. Absent from servers that predate Bot Mode support." }
         }
       },
@@ -1080,6 +1084,7 @@
       },
       "JobBinding": {
         "type": ["object", "null"],
+        "description": "Present when the job reports to this app. Every binding reports into the General chat: on write, any non-empty project_id binds and its value is ignored; on read, project_id is the General project.",
         "required": ["project_id"],
         "properties": {
           "job_id": { "type": "string" },
