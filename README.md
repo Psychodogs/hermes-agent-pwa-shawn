@@ -96,6 +96,10 @@ push notifications can exist.
 - **Search** over project names, instructions and opening prompts. Message
   bodies live in Hermes, which has no search endpoint, and the UI says so
   rather than implying otherwise.
+- **Read-only Telegram history** at `/telegram`. Browse stored Hermes
+  conversations that came from Telegram, with assistant Markdown rendered
+  safely. It only reads; sending from the web app is not available, so use
+  Telegram to reply.
 
 ## Development
 

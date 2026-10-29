@@ -567,6 +567,43 @@ say the opposite.
 Hermes versions differ. When something behaves unexpectedly, read the running
 instance's `gateway/platforms/api_server.py` rather than the docs.
 
+## Telegram conversation viewer (read-only)
+
+`/telegram` lists and shows stored Hermes sessions whose `source` is
+`telegram`. It is a viewer only: nothing here sends to Telegram, and there is
+no `/submissions`, `/events` or native bridge. Design: `docs/telegram-integration-plan.md`,
+`docs/telegram-history-contract.md`, `docs/telegram-ui-contract.md`.
+
+- **Routes.** `GET /api/telegram/sessions` (list), `/sessions/[id]` (detail),
+  `/sessions/[id]/messages` (a page). Pages are `src/app/telegram/**`; UI is
+  `src/components/telegram/*` with `useTelegramConversation`. Logic lives in
+  `src/lib/telegram-history.ts` and `telegram-history-http.ts`.
+- **History safety.** Every ID is authorized over Hermes REST first
+  (`source === "telegram"`, not hidden, archived or an internal child), and
+  every message page re-authorizes the session ids it contains. Only
+  `user`/`assistant` rows with text are projected; tool, system, reasoning,
+  model-only and compaction rows are dropped. DTOs are built field by field, so
+  no chat, user or topic IDs and no raw origin JSON reach the browser. Responses
+  are `no-store`; no profile override is accepted.
+- **Cursors are opaque, process-local capabilities** (random, 30 minute TTL,
+  bound to one session). History is read latest-first by offset, so a cursor
+  carries a fingerprint of the newest page; if rows were appended or compacted
+  the answer is `409 history_changed` and the client refreshes instead of
+  skipping or repeating rows.
+- **Destination label.** `readTelegramMetadata()` opens `<HERMES_HOME>/state.db`
+  read-only, and only for IDs already authorized, to get `display_name` and
+  `chat_type` for the "Shared with Telegram" header. It is optional enrichment:
+  any failure omits `destination`, and it is never used for transcripts or
+  authorization.
+- **Rendering.** Assistant messages declared `content_format: "markdown"` use
+  `MessageBody` (React elements, no HTML path); user text stays literal. No file
+  probing, and no `onRecommendationAction`, so recommendation cards are inert.
+- **Why compose is disabled.** The detail DTO carries `capability` from
+  `src/lib/telegram-readonly.ts`: `{ mode: "read-only", canSubmit: false, reason }`.
+  `canCompose()` needs `shared-capable` plus a verified destination and
+  generation, so it is always false today. A web prompt would be posted by the
+  bot into the chat, and that path is not built or verified.
+
 ## Environment
 
 ```
