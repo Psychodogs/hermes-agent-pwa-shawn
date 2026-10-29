@@ -1,9 +1,12 @@
 import Database from "better-sqlite3";
+import type { TelegramDestination } from "./telegram-types";
 
 export interface TelegramMetadata {
   displayName: string | null;
-  chatType: "private" | "group" | "supergroup" | "channel" | null;
+  // Hermes stores "dm" | "group" | "channel" | "thread" (gateway/session.py); Telegram forums normalize to "forum".
+  chatType: "private" | "dm" | "group" | "supergroup" | "forum" | "channel" | null;
 }
+const CHAT_TYPES = new Set(["private", "dm", "group", "supergroup", "forum", "channel"]);
 /** Optional enrichment ONLY. Callers must authorize IDs over REST first.
  * Never use this adapter for transcript reads, routing, or authorization. */
 export function readTelegramMetadata(databasePath: string, authorizedSessionIds: readonly string[]): Map<string, TelegramMetadata> {
@@ -17,7 +20,7 @@ export function readTelegramMetadata(databasePath: string, authorizedSessionIds:
     for (const id of new Set(authorizedSessionIds)) {
       const row = query.get(id) as { display_name: unknown; chat_type: unknown } | undefined;
       if (!row) continue;
-      const chatType = row.chat_type === "private" || row.chat_type === "group" || row.chat_type === "supergroup" || row.chat_type === "channel" ? row.chat_type : null;
+      const chatType = typeof row.chat_type === "string" && CHAT_TYPES.has(row.chat_type) ? row.chat_type as TelegramMetadata["chatType"] : null;
       result.set(id, { displayName: typeof row.display_name === "string" ? row.display_name.slice(0, 256) : null, chatType });
     }
     return result;
@@ -25,4 +28,13 @@ export function readTelegramMetadata(databasePath: string, authorizedSessionIds:
     // Missing file/schema, locks, and permission errors are optional enrichment failure.
     return new Map();
   } finally { db?.close(); }
+}
+
+/** Browser-safe projection: a display label and coarse kind only. No IDs, no origin JSON. */
+export function toTelegramDestination(meta: TelegramMetadata | undefined): TelegramDestination | undefined {
+  const label = meta?.displayName?.replace(/\s+/g, " ").trim();
+  if (!meta || !label) return undefined;
+  const kind = meta.chatType === "private" || meta.chatType === "dm" ? "private"
+    : meta.chatType === "group" || meta.chatType === "supergroup" || meta.chatType === "forum" ? "group" : "unknown";
+  return { label, kind };
 }

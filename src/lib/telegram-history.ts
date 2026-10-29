@@ -1,6 +1,9 @@
 import { createHash, randomBytes } from "node:crypto";
-import type { TelegramHistoryOptions, TelegramMessage, TelegramMessagePage, TelegramSession } from "./telegram-types";
-import { hermes, HermesApiError, type HermesSession } from "./hermes";
+import path from "node:path";
+import type { TelegramHistoryOptions, TelegramMessage, TelegramMessagePage, TelegramSession, TelegramSessionDetail } from "./telegram-types";
+import { hermes, HermesApiError, HERMES_HOME, type HermesSession } from "./hermes";
+import { readTelegramMetadata, toTelegramDestination, type TelegramMetadata } from "./telegram-metadata";
+import { TELEGRAM_READ_ONLY_CAPABILITY } from "./telegram-readonly";
 
 export interface TelegramHistoryClient {
   getSession(id: string): Promise<HermesSession>;
@@ -37,7 +40,18 @@ function projectMessages(rows: Record<string, unknown>[]): TelegramMessage[] {
   }
   return messages;
 }
-export function createTelegramHistoryReader(client: TelegramHistoryClient) {
+/** Optional enrichment. Called only with IDs the history API already authorized. */
+export type TelegramMetadataLookup = (authorizedIds: string[]) => Map<string, TelegramMetadata>;
+export function createTelegramHistoryReader(client: TelegramHistoryClient, lookup?: TelegramMetadataLookup) {
+  function withDestinations(sessions: TelegramSession[]): TelegramSession[] {
+    if (!lookup || !sessions.length) return sessions;
+    let found: Map<string, TelegramMetadata>;
+    try { found = lookup(sessions.map(s => s.id)); } catch { return sessions; }
+    return sessions.map(session => {
+      const destination = toTelegramDestination(found.get(session.id));
+      return destination ? { ...session, destination } : session;
+    });
+  }
   // Opaque random capabilities, bounded and process-local. No transcript bodies retained.
   const cursors = new Map<string, CursorState>();
   function decode(cursor: string | null | undefined, id: string) {
@@ -86,9 +100,12 @@ export function createTelegramHistoryReader(client: TelegramHistoryClient) {
         seen.add(row.id);
       }
       if (seen.size > 10_000) throw new TelegramHistoryError("history_changed");
-      return { sessions, nextCursor: page.has_more ? encode({ id: "@list", offset: offset + PAGE_SIZE, anchor: "", seen: [...seen] }) : null };
+      return { sessions: withDestinations(sessions), nextCursor: page.has_more ? encode({ id: "@list", offset: offset + PAGE_SIZE, anchor: "", seen: [...seen] }) : null };
     },
-    async getTelegramSession(id: string) { return projectSession(await authorize(id)); },
+    async getTelegramSession(id: string): Promise<TelegramSessionDetail> {
+      const [session] = withDestinations([projectSession(await authorize(id))]);
+      return { ...session, capability: { ...TELEGRAM_READ_ONLY_CAPABILITY } };
+    },
     async getTelegramMessages(id: string, options: TelegramHistoryOptions = {}): Promise<TelegramMessagePage> {
       const state = decode(options.cursor, id);
       await authorize(id);
@@ -110,7 +127,8 @@ export function createTelegramHistoryReader(client: TelegramHistoryClient) {
 }
 
 // Default profile is the only exposed history scope. No browser-selected profile.
-const defaultReader = createTelegramHistoryReader(hermes);
+// Hermes keeps its session DB at <HERMES_HOME>/state.db (hermes_cli/approvals_suggest.py default_db_path).
+const defaultReader = createTelegramHistoryReader(hermes, ids => readTelegramMetadata(path.join(HERMES_HOME, "state.db"), ids));
 export const listTelegramSessions = defaultReader.listTelegramSessions;
 export const getTelegramSession = defaultReader.getTelegramSession;
 export const getTelegramMessages = defaultReader.getTelegramMessages;

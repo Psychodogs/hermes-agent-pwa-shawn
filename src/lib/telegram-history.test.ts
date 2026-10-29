@@ -90,7 +90,7 @@ describe("Telegram safe history", () => {
   });
   it("returns ended historical sessions without private fields", async () => {
     const api = client(); api.getSession.mockResolvedValue(session("root", { ended_at: 2, user_id: "secret", chat_id: "private" }));
-    expect(await createTelegramHistoryReader(api).getTelegramSession("root")).toEqual({ id: "root", title: "Chat", source: "telegram", startedAt: "1970-01-01T00:00:01.000Z", lastActiveAt: null, endedAt: "1970-01-01T00:00:02.000Z", readOnly: true });
+    expect(await createTelegramHistoryReader(api).getTelegramSession("root")).toEqual({ id: "root", title: "Chat", source: "telegram", startedAt: "1970-01-01T00:00:01.000Z", lastActiveAt: null, endedAt: "1970-01-01T00:00:02.000Z", readOnly: true, capability: { mode: "read-only", canSubmit: false, reason: expect.stringContaining("Telegram") } });
   });
   it("excludes tool/system/reasoning/model-only and synthetic compaction rows", async () => {
     const unsafe = [
@@ -108,5 +108,27 @@ describe("Telegram safe history", () => {
     const api = client([{ id: 1, session_id: "root", role: "user", content: "hello", timestamp: 1, reasoning: "secret", user_id: "private" }]);
     const page = await createTelegramHistoryReader(api).getTelegramMessages("root");
     expect(page).toEqual({ messages: [{ id: "1", role: "user", content: "hello", content_format: "plain", timestamp: "1970-01-01T00:00:01.000Z", provenance: "stored" }], nextCursor: null });
+  });
+});
+
+describe("Telegram detail capability and destination", () => {
+  it("returns a read-only capability and a sanitized destination for authorized IDs only", async () => {
+    const api = client();
+    api.listSessions.mockResolvedValueOnce({ data: [session(), session("hidden", { hidden: true })], has_more: false, limit: 100, offset: 0, object: "list" });
+    const lookup = vi.fn((ids: string[]) => new Map(ids.map(id => [id, { displayName: "Friends", chatType: "supergroup" as const }])));
+    const reader = createTelegramHistoryReader(api, lookup);
+    const detail = await reader.getTelegramSession("root");
+    expect(detail.capability).toMatchObject({ mode: "read-only", canSubmit: false });
+    expect(detail.capability.reason).toMatch(/Telegram/);
+    expect(detail.destination).toEqual({ label: "Friends", kind: "group" });
+    expect((await reader.listTelegramSessions()).sessions.map(s => s.destination?.label)).toEqual(["Friends"]);
+    expect(lookup).toHaveBeenLastCalledWith(["root"]);
+  });
+  it("silently omits destination when metadata lookup fails or is empty", async () => {
+    const throwing = createTelegramHistoryReader(client(), () => { throw new Error("locked"); });
+    expect((await throwing.getTelegramSession("root")).destination).toBeUndefined();
+    const empty = createTelegramHistoryReader(client(), () => new Map());
+    expect((await empty.getTelegramSession("root")).destination).toBeUndefined();
+    expect((await createTelegramHistoryReader(client()).getTelegramSession("root")).capability.canSubmit).toBe(false);
   });
 });

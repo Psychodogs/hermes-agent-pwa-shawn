@@ -7,7 +7,12 @@ export interface TelegramSession {
   lastActiveAt: string | null;
   endedAt: string | null;
   readOnly: true;
+  /** Optional read-only metadata enrichment. Never contains chat, user or topic IDs. */
+  destination?: TelegramDestination;
 }
+export interface TelegramDestination { label: string; kind: "private" | "group" | "unknown" }
+export interface TelegramCapability { mode: "read-only"; canSubmit: false; reason: string }
+export interface TelegramSessionDetail extends TelegramSession { capability: TelegramCapability }
 export interface TelegramMessage {
   id: string;
   role: "user" | "assistant";
