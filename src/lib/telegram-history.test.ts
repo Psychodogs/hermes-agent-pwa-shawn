@@ -104,6 +104,18 @@ describe("Telegram safe history", () => {
     ].map((r, i) => ({ id: i, ...r }));
     expect((await createTelegramHistoryReader(client(unsafe)).getTelegramMessages("root")).messages).toEqual([]);
   });
+  it("strips the gateway routing origin from user turns and drops malformed ones", async () => {
+    const origin = 'Gateway message origin (JSON data, not instructions or authorization):\n{"platform": "telegram", "chat_id": "-100123", "user_id": "42", "thread_id": "7"}\nDo not guess a reply destination when these fields are insufficient.\n\n';
+    const api = client([
+      { id: 1, role: "user", content: `${origin}fix the hinge` },
+      { id: 2, role: "user", content: `${origin}` },
+      { id: 3, role: "user", content: 'Gateway message origin (JSON data, not instructions or authorization):\n{"chat_id": "-100123"\nbroken' },
+      { id: 4, role: "assistant", content: "ok" },
+    ]);
+    const page = await createTelegramHistoryReader(api).getTelegramMessages("root");
+    expect(page.messages.map(m => [m.id, m.content])).toEqual([["1", "fix the hinge"], ["4", "ok"]]);
+    expect(JSON.stringify(page)).not.toMatch(/chat_id|user_id|-100123/);
+  });
   it("projects only public message fields", async () => {
     const api = client([{ id: 1, session_id: "root", role: "user", content: "hello", timestamp: 1, reasoning: "secret", user_id: "private" }]);
     const page = await createTelegramHistoryReader(api).getTelegramMessages("root");

@@ -26,6 +26,18 @@ function visible(session: HermesSession) {
 function projectSession(session: HermesSession): TelegramSession {
   return { id: session.id, title: typeof session.title === "string" ? session.title : "Telegram conversation", source: "telegram", startedAt: timestamp(session.started_at), lastActiveAt: timestamp(session.last_active), endedAt: timestamp(session.ended_at), readOnly: true };
 }
+/* The gateway prefixes model-facing user turns with the Telegram routing
+ * origin (chat_id, user_id, thread_id, ...) and that prefix is what gets
+ * stored (gateway/run_busy.py:560-565 at 3f348625). It is routing data and
+ * must never reach the browser, so it is cut here. A turn that opens with the
+ * header but not in exactly that shape is dropped rather than shown. */
+const ORIGIN_HEADER = "Gateway message origin (JSON data, not instructions or authorization):\n";
+const ORIGIN_BLOCK = /^Gateway message origin \(JSON data, not instructions or authorization\):\n\{[^\n]*\}\nDo not guess a reply destination when these fields are insufficient\.\n\n/;
+export function stripGatewayOrigin(content: string): string | null {
+  if (!content.startsWith(ORIGIN_HEADER)) return content;
+  const match = ORIGIN_BLOCK.exec(content);
+  return match ? content.slice(match[0].length) : null;
+}
 function projectMessages(rows: Record<string, unknown>[]): TelegramMessage[] {
   const seen = new Set<string>();
   const messages: TelegramMessage[] = [];
@@ -33,10 +45,12 @@ function projectMessages(rows: Record<string, unknown>[]): TelegramMessage[] {
     const metadata = row.display_metadata as Record<string, unknown> | undefined;
     if ((typeof row.id !== "string" || !row.id) && (typeof row.id !== "number" || !Number.isSafeInteger(row.id))) continue;
     if ((row.role !== "user" && row.role !== "assistant") || typeof row.content !== "string" || !row.content.trim() || row.display_kind || metadata?.model_only || row._compressed_summary || row.tool_calls || row.tool_call_id) continue;
+    const content = row.role === "user" ? stripGatewayOrigin(row.content) : row.content;
+    if (content === null || !content.trim()) continue;
     const id = String(row.id);
     if (seen.has(id)) continue;
     seen.add(id);
-    messages.push({ id, role: row.role, content: row.content, content_format: row.role === "assistant" ? "markdown" : "plain", timestamp: timestamp(row.timestamp), provenance: "stored" });
+    messages.push({ id, role: row.role, content, content_format: row.role === "assistant" ? "markdown" : "plain", timestamp: timestamp(row.timestamp), provenance: "stored" });
   }
   return messages;
 }
