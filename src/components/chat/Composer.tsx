@@ -28,6 +28,7 @@ import {
   type SlashCommand,
 } from "@/lib/commands";
 import { ThinkingChip } from "./ThinkingChip";
+import { ContextUsageRing } from "./ContextUsageRing";
 import type { ReasoningEffort } from "@/lib/model-options";
 import type { HermesFeatures } from "@/hooks/useStatus";
 import type { Attachment } from "@/lib/chat-types";
@@ -618,6 +619,8 @@ export function Composer({
                 />
               )}
             </div>
+
+            <ContextUsageRing model={modelLabel} />
 
             {running && canSend && (
               <span
