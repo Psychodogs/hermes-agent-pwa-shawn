@@ -3,7 +3,10 @@
 import React, { useLayoutEffect, useRef } from "react";
 import type { TelegramPublicMessage } from "@/hooks/useTelegramConversation";
 
-/** Deliberately literal: no file probes, recommendation/approval actions or remote media. */
+import { MessageBody } from "@/components/chat/Message";
+
+/** Assistant Markdown renders through the shared React-element renderer (no HTML path); user text stays literal.
+ * No file probes, recommendation/approval actions or remote media. */
 export function TelegramHistory({ messages, nextCursor, busy, onOlder }: {
   messages: TelegramPublicMessage[]; nextCursor: string | null; busy: boolean; onOlder: () => void;
 }) {
@@ -24,7 +27,11 @@ export function TelegramHistory({ messages, nextCursor, busy, onOlder }: {
       {!busy && !messages.length && <p className="text-ink-2">No public messages on this page.{nextCursor ? " Older history is available." : ""}</p>}
       {messages.map(message => <article key={message.id} className={message.role === "user" ? "ml-auto max-w-[90%] rounded-control bg-field p-3" : "py-2"}>
         <p className="mb-1 text-meta text-ink-3">{message.role === "user" ? "User" : "Assistant"} · Stored history{message.timestamp ? ` · ${message.timestamp}` : ""}</p>
-        <div className="whitespace-pre-wrap break-words text-body text-ink [overflow-wrap:anywhere]">{message.content}</div>
+        {message.role === "assistant" && message.content_format === "markdown"
+          // Presentation only: MessageBody never probes /api/files, and without
+          // onRecommendationAction any recommendation card renders inert.
+          ? <div className="space-y-2 break-words text-ink [overflow-wrap:anywhere]"><MessageBody content={message.content} markdown /></div>
+          : <div className="whitespace-pre-wrap break-words text-body text-ink [overflow-wrap:anywhere]">{message.content}</div>}
       </article>)}
     </div>
   </div>;
