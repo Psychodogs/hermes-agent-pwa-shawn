@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   IconBranch,
   IconChevronRight,
@@ -255,6 +256,7 @@ export function ProjectSidebar({
   onNewProject: () => void;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const { openSearch } = useAppActions();
   // shortcut hint on the Search row, only where there is a keyboard
   const mod = useKeyboardMod();
@@ -511,6 +513,10 @@ export function ProjectSidebar({
         * arrangement — rather than an icon in the header and a button at the
         * foot. */}
       <div className="flex flex-col gap-px px-2 pb-2">
+        <Link href="/telegram" onClick={onClose} aria-current={pathname.startsWith("/telegram") ? "page" : undefined} className={`${sidebarRow} ${pathname.startsWith("/telegram") ? "bg-hover-2" : ""}`}>
+          <span aria-hidden className="grid w-[18px] place-items-center">↗</span>
+          <span className="flex-1">Telegram</span>
+        </Link>
         <button
           type="button"
           onClick={onNewProject}

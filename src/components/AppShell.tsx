@@ -170,7 +170,7 @@ export function AppShell({
                 <div className="flex size-10 items-center justify-center lg:hidden">
                   <button
                     type="button"
-                    aria-label="Open projects and sessions"
+                    aria-label="Open navigation: projects and Telegram"
                     onClick={() => setSidebarOpen(true)}
                     className="tap-target grid size-10 place-items-center rounded-control text-ink-2 transition-[color,background-color,transform] duration-150 hover:bg-hover hover:text-ink active:scale-[0.96]"
                   >

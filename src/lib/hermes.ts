@@ -455,6 +455,18 @@ function createClient(scope: Scope) {
       return hermesFetch<void>(scope, `/api/sessions/${id}`, { method: "DELETE" });
     },
 
+    /** Explicit bounded history paging; ordinary getMessages semantics stay unchanged. */
+    getMessagesPage(id: string, options: { limit: number; offset: number; order: "latest"; includeCompacted: boolean }) {
+      if (!Number.isInteger(options.limit) || options.limit < 1 || options.limit > 500 || !Number.isSafeInteger(options.offset) || options.offset < 0)
+        throw new Error("Invalid history pagination");
+      const query = new URLSearchParams({ limit: String(options.limit), offset: String(options.offset), order: options.order, include_compacted: String(options.includeCompacted) });
+      return hermesFetch<{
+        session_id: string;
+        data: HermesMessage[];
+        pagination: { limit: number; offset: number; order: string; returned: number };
+      }>(scope, `/api/sessions/${encodeURIComponent(id)}/messages?${query}`, { cache: "no-store" });
+    },
+
     getMessages(id: string) {
       return hermesFetch<{
         object: "list";
